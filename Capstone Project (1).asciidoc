@@ -1,0 +1,927 @@
+== Capstone Project - Car accident severity
+
+== Business Understanding
+
+Using the dataset for collisions, with a various host of attributes
+being recorded, we would like to understand if any relationships occur
+within the data that could lead to a reliable prediction of accident
+severity; through building an appropriate model for the given dataset.
+
+== Data Understanding
+
+The dataset contains information on location type, collision type, types
+of objects/people involved, weather/road conditions and collision
+description, which are all potentially useful attributes to ascertain
+any inter-relationships that could help predict accident severity.
+
+
++*In[2]:*+
+[source, ipython3]
+----
+import matplotlib.pyplot as plt
+import pandas as pd
+import pylab as pl
+import numpy as np
+%matplotlib inline
+----
+
+== Notes
+
+* Check for correlation between type of accident and severity
+* Check for correlation between location and severity
+* Check for correlation between location and type of accident
+* Accident severity vs. time of day?
+* Consider excluding data before a certain year? - to take into
+consideration any changes that may have occured to various locations
+* Since there’s only 2 severity categories, plot various attribute
+values against mean severity
+
+
++*In[3]:*+
+[source, ipython3]
+----
+import os
+print(os.getcwd())
+----
+
+
++*Out[3]:*+
+----
+/resources/labs/coursera/ML0101EN
+----
+
+
++*In[4]:*+
+[source, ipython3]
+----
+accidents = pd.read_csv("Data-Collisions_csv.csv")
+accidents.head()
+----
+
+
++*Out[4]:*+
+----
+/home/jupyterlab/conda/envs/python/lib/python3.6/site-packages/IPython/core/interactiveshell.py:3072: DtypeWarning: Columns (33) have mixed types.Specify dtype option on import or set low_memory=False.
+  interactivity=interactivity, compiler=compiler, result=result)
+
+[cols=",,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |SEVERITYCODE |X |Y |OBJECTID |INCKEY |COLDETKEY |REPORTNO |STATUS
+|ADDRTYPE |INTKEY |... |ROADCOND |LIGHTCOND |PEDROWNOTGRNT |SDOTCOLNUM
+|SPEEDING |ST_COLCODE |ST_COLDESC |SEGLANEKEY |CROSSWALKKEY
+|HITPARKEDCAR
+|0 |2 |-122.323148 |47.703140 |1 |1307 |1307 |3502005 |Matched
+|Intersection |37475.0 |... |Wet |Daylight |NaN |NaN |NaN |10 |Entering
+at angle |0 |0 |N
+
+|1 |1 |-122.347294 |47.647172 |2 |52200 |52200 |2607959 |Matched |Block
+|NaN |... |Wet |Dark - Street Lights On |NaN |6354039.0 |NaN |11 |From
+same direction - both going straight - bo... |0 |0 |N
+
+|2 |1 |-122.334540 |47.607871 |3 |26700 |26700 |1482393 |Matched |Block
+|NaN |... |Dry |Daylight |NaN |4323031.0 |NaN |32 |One parked--one
+moving |0 |0 |N
+
+|3 |1 |-122.334803 |47.604803 |4 |1144 |1144 |3503937 |Matched |Block
+|NaN |... |Dry |Daylight |NaN |NaN |NaN |23 |From same direction - all
+others |0 |0 |N
+
+|4 |2 |-122.306426 |47.545739 |5 |17700 |17700 |1807429 |Matched
+|Intersection |34387.0 |... |Wet |Daylight |NaN |4028032.0 |NaN |10
+|Entering at angle |0 |0 |N
+|===
+
+5 rows × 38 columns
+----
+
+
++*In[4]:*+
+[source, ipython3]
+----
+accidents["LOCATION"].value_counts()
+# Too many different locations to consider using this as a feature
+----
+
+
++*Out[4]:*+
+----BATTERY ST TUNNEL NB BETWEEN ALASKAN WY VI NB AND AURORA AVE N    276
+BATTERY ST TUNNEL SB BETWEEN AURORA AVE N AND ALASKAN WY VI SB    271
+N NORTHGATE WAY BETWEEN MERIDIAN AVE N AND CORLISS AVE N          265
+AURORA AVE N BETWEEN N 117TH PL AND N 125TH ST                    254
+6TH AVE AND JAMES ST                                              252
+                                                                 ... 
+S AUSTIN ST BETWEEN DEAD END AND 35TH AVE S                         1
+NE 57TH ST BETWEEN 8TH AVE NE AND ROOSEVELT WAY NE                  1
+34TH AVE S BETWEEN CLAREMONT PL S AND S DAKOTA ST                   1
+34TH AVE BETWEEN E OLIVE ST AND E HOWELL ST                         1
+6TH AVE S BETWEEN S BRADFORD ST AND S ANDOVER ST                    1
+Name: LOCATION, Length: 24102, dtype: int64----
+
+
++*In[5]:*+
+[source, ipython3]
+----
+accidents.describe(include="all")
+----
+
+
++*Out[5]:*+
+----
+[cols=",,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |SEVERITYCODE |X |Y |OBJECTID |INCKEY |COLDETKEY |REPORTNO |STATUS
+|ADDRTYPE |INTKEY |... |ROADCOND |LIGHTCOND |PEDROWNOTGRNT |SDOTCOLNUM
+|SPEEDING |ST_COLCODE |ST_COLDESC |SEGLANEKEY |CROSSWALKKEY
+|HITPARKEDCAR
+|count |194673.000000 |189339.000000 |189339.000000 |194673.000000
+|194673.000000 |194673.000000 |194673 |194673 |192747 |65070.000000 |...
+|189661 |189503 |4667 |1.149360e+05 |9333 |194655 |189769 |194673.000000
+|1.946730e+05 |194673
+
+|unique |NaN |NaN |NaN |NaN |NaN |NaN |194670 |2 |3 |NaN |... |9 |9 |1
+|NaN |1 |115 |62 |NaN |NaN |2
+
+|top |NaN |NaN |NaN |NaN |NaN |NaN |1782439 |Matched |Block |NaN |...
+|Dry |Daylight |Y |NaN |Y |32 |One parked--one moving |NaN |NaN |N
+
+|freq |NaN |NaN |NaN |NaN |NaN |NaN |2 |189786 |126926 |NaN |... |124510
+|116137 |4667 |NaN |9333 |27612 |44421 |NaN |NaN |187457
+
+|mean |1.298901 |-122.330518 |47.619543 |108479.364930 |141091.456350
+|141298.811381 |NaN |NaN |NaN |37558.450576 |... |NaN |NaN |NaN
+|7.972521e+06 |NaN |NaN |NaN |269.401114 |9.782452e+03 |NaN
+
+|std |0.457778 |0.029976 |0.056157 |62649.722558 |86634.402737
+|86986.542110 |NaN |NaN |NaN |51745.990273 |... |NaN |NaN |NaN
+|2.553533e+06 |NaN |NaN |NaN |3315.776055 |7.226926e+04 |NaN
+
+|min |1.000000 |-122.419091 |47.495573 |1.000000 |1001.000000
+|1001.000000 |NaN |NaN |NaN |23807.000000 |... |NaN |NaN |NaN
+|1.007024e+06 |NaN |NaN |NaN |0.000000 |0.000000e+00 |NaN
+
+|25% |1.000000 |-122.348673 |47.575956 |54267.000000 |70383.000000
+|70383.000000 |NaN |NaN |NaN |28667.000000 |... |NaN |NaN |NaN
+|6.040015e+06 |NaN |NaN |NaN |0.000000 |0.000000e+00 |NaN
+
+|50% |1.000000 |-122.330224 |47.615369 |106912.000000 |123363.000000
+|123363.000000 |NaN |NaN |NaN |29973.000000 |... |NaN |NaN |NaN
+|8.023022e+06 |NaN |NaN |NaN |0.000000 |0.000000e+00 |NaN
+
+|75% |2.000000 |-122.311937 |47.663664 |162272.000000 |203319.000000
+|203459.000000 |NaN |NaN |NaN |33973.000000 |... |NaN |NaN |NaN
+|1.015501e+07 |NaN |NaN |NaN |0.000000 |0.000000e+00 |NaN
+
+|max |2.000000 |-122.238949 |47.734142 |219547.000000 |331454.000000
+|332954.000000 |NaN |NaN |NaN |757580.000000 |... |NaN |NaN |NaN
+|1.307202e+07 |NaN |NaN |NaN |525241.000000 |5.239700e+06 |NaN
+|===
+
+11 rows × 38 columns
+----
+
+
++*In[8]:*+
+[source, ipython3]
+----
+severity_missing = accidents["SEVERITYCODE"].isnull()
+severity_missing
+----
+
+
++*Out[8]:*+
+----0         False
+1         False
+2         False
+3         False
+4         False
+          ...  
+194668    False
+194669    False
+194670    False
+194671    False
+194672    False
+Name: SEVERITYCODE, Length: 194673, dtype: bool----
+
+
++*In[9]:*+
+[source, ipython3]
+----
+severity_missing.value_counts()
+----
+
+
++*Out[9]:*+
+----False    194673
+Name: SEVERITYCODE, dtype: int64----
+
+
++*In[10]:*+
+[source, ipython3]
+----
+# Extracting features which could be useful predictors and create a new dataframe
+accidents_df = accidents[["SEVERITYCODE","ADDRTYPE","COLLISIONTYPE","PERSONCOUNT","PEDCOUNT","PEDCYLCOUNT","VEHCOUNT","JUNCTIONTYPE","SDOT_COLCODE","WEATHER","ROADCOND","LIGHTCOND","ST_COLCODE","HITPARKEDCAR"]]
+accidents_df.head()
+----
+
+
++*Out[10]:*+
+----
+[cols=",,,,,,,,,,,,,,",options="header",]
+|===
+| |SEVERITYCODE |ADDRTYPE |COLLISIONTYPE |PERSONCOUNT |PEDCOUNT
+|PEDCYLCOUNT |VEHCOUNT |JUNCTIONTYPE |SDOT_COLCODE |WEATHER |ROADCOND
+|LIGHTCOND |ST_COLCODE |HITPARKEDCAR
+|0 |2 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Overcast |Wet |Daylight |10 |N
+
+|1 |1 |Block |Sideswipe |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |16 |Raining |Wet |Dark - Street Lights On |11 |N
+
+|2 |1 |Block |Parked Car |4 |0 |0 |3 |Mid-Block (not related to
+intersection) |14 |Overcast |Dry |Daylight |32 |N
+
+|3 |1 |Block |Other |3 |0 |0 |3 |Mid-Block (not related to intersection)
+|11 |Clear |Dry |Daylight |23 |N
+
+|4 |2 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Raining |Wet |Daylight |10 |N
+|===
+----
+
+
++*In[11]:*+
+[source, ipython3]
+----
+missing_data = accidents_df.isnull()
+for column in missing_data.columns.values.tolist():
+    print(column)
+    print (missing_data[column].value_counts())
+    print("")    
+    # Probably best to delete all rows with missing data as there are already a large number of entries
+----
+
+
++*Out[11]:*+
+----
+SEVERITYCODE
+False    194673
+Name: SEVERITYCODE, dtype: int64
+
+ADDRTYPE
+False    192747
+True       1926
+Name: ADDRTYPE, dtype: int64
+
+COLLISIONTYPE
+False    189769
+True       4904
+Name: COLLISIONTYPE, dtype: int64
+
+PERSONCOUNT
+False    194673
+Name: PERSONCOUNT, dtype: int64
+
+PEDCOUNT
+False    194673
+Name: PEDCOUNT, dtype: int64
+
+PEDCYLCOUNT
+False    194673
+Name: PEDCYLCOUNT, dtype: int64
+
+VEHCOUNT
+False    194673
+Name: VEHCOUNT, dtype: int64
+
+JUNCTIONTYPE
+False    188344
+True       6329
+Name: JUNCTIONTYPE, dtype: int64
+
+SDOT_COLCODE
+False    194673
+Name: SDOT_COLCODE, dtype: int64
+
+WEATHER
+False    189592
+True       5081
+Name: WEATHER, dtype: int64
+
+ROADCOND
+False    189661
+True       5012
+Name: ROADCOND, dtype: int64
+
+LIGHTCOND
+False    189503
+True       5170
+Name: LIGHTCOND, dtype: int64
+
+ST_COLCODE
+False    194655
+True         18
+Name: ST_COLCODE, dtype: int64
+
+HITPARKEDCAR
+False    194673
+Name: HITPARKEDCAR, dtype: int64
+
+----
+
+
++*In[12]:*+
+[source, ipython3]
+----
+accidents_df.dropna(axis=0, inplace=True)
+----
+
+
++*Out[12]:*+
+----
+/home/jupyterlab/conda/envs/python/lib/python3.6/site-packages/ipykernel_launcher.py:1: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  """Entry point for launching an IPython kernel.
+----
+
+
++*In[45]:*+
+[source, ipython3]
+----
+#Check to make sure there are no missing values in the dataframe
+
+missing_data = accidents_df.isnull()
+for column in missing_data.columns.values.tolist():
+    print(column)
+    print (missing_data[column].value_counts())
+    print("")    
+----
+
+
++*Out[45]:*+
+----
+SEVERITYCODE
+False    182895
+Name: SEVERITYCODE, dtype: int64
+
+ADDRTYPE
+False    182895
+Name: ADDRTYPE, dtype: int64
+
+COLLISIONTYPE
+False    182895
+Name: COLLISIONTYPE, dtype: int64
+
+PERSONCOUNT
+False    182895
+Name: PERSONCOUNT, dtype: int64
+
+PEDCOUNT
+False    182895
+Name: PEDCOUNT, dtype: int64
+
+PEDCYLCOUNT
+False    182895
+Name: PEDCYLCOUNT, dtype: int64
+
+VEHCOUNT
+False    182895
+Name: VEHCOUNT, dtype: int64
+
+JUNCTIONTYPE
+False    182895
+Name: JUNCTIONTYPE, dtype: int64
+
+SDOT_COLCODE
+False    182895
+Name: SDOT_COLCODE, dtype: int64
+
+WEATHER
+False    182895
+Name: WEATHER, dtype: int64
+
+ROADCOND
+False    182895
+Name: ROADCOND, dtype: int64
+
+LIGHTCOND
+False    182895
+Name: LIGHTCOND, dtype: int64
+
+ST_COLCODE
+False    182895
+Name: ST_COLCODE, dtype: int64
+
+HITPARKEDCAR
+False    182895
+Name: HITPARKEDCAR, dtype: int64
+
+----
+
+
++*In[14]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['ADDRTYPE'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[14]:*+
+----ADDRTYPE      SEVERITYCODE
+Alley         1               0.876596
+              2               0.123404
+Block         1               0.754930
+              2               0.245070
+Intersection  1               0.568012
+              2               0.431988
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[15]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['COLLISIONTYPE'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[15]:*+
+----COLLISIONTYPE  SEVERITYCODE
+Angles         1               0.606101
+               2               0.393899
+Cycles         2               0.877098
+               1               0.122902
+Head On        1               0.566132
+               2               0.433868
+Left Turn      1               0.604312
+               2               0.395688
+Other          1               0.738371
+               2               0.261629
+Parked Car     1               0.938960
+               2               0.061040
+Pedestrian     2               0.898511
+               1               0.101489
+Rear Ended     1               0.568205
+               2               0.431795
+Right Turn     1               0.793786
+               2               0.206214
+Sideswipe      1               0.865026
+               2               0.134974
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[49]:*+
+[source, ipython3]
+----
+PersonCountValue = accidents_df.groupby(['PERSONCOUNT'])['SEVERITYCODE'].value_counts(normalize=True).to_frame()
+PersonCountValue.rename(columns={'SEVERITYCODE':'Value_Counts'}, inplace=True)
+PersonCountValue
+----
+
+
++*Out[49]:*+
+----
+Value_Counts
+
+PERSONCOUNT
+
+SEVERITYCODE
+
+0
+
+1
+
+0.677167
+
+2
+
+0.322833
+
+1
+
+1
+
+0.737269
+
+2
+
+0.262731
+
+2
+
+1
+
+0.744643
+
+...
+
+...
+
+...
+
+48
+
+2
+
+1.000000
+
+53
+
+1
+
+1.000000
+
+54
+
+2
+
+1.000000
+
+57
+
+1
+
+1.000000
+
+81
+
+2
+
+1.000000
+
+79 rows × 1 columns
+----
+
+
++*In[56]:*+
+[source, ipython3]
+----
+accidents_df['PERSONCOUNT'].unique()
+----
+
+
++*Out[56]:*+
+----array([ 2,  4,  3,  0,  5,  1,  6, 16,  8,  7, 11,  9, 12, 17, 26, 22, 10,
+       37, 13, 36, 28, 14, 53, 19, 30, 29, 23, 44, 15, 32, 21, 41, 27, 20,
+       35, 43, 81, 18, 25, 48, 24, 34, 57, 39, 47, 54, 31])----
+
+
++*In[38]:*+
+[source, ipython3]
+----
+y = PersonCountValue[PersonCountValue['SEVERITYCODE']) == 2, "Value_Counts"]
+----
+
+
++*Out[38]:*+
+----
+
+    ---------------------------------------------------------------------------
+
+    KeyError                                  Traceback (most recent call last)
+
+    ~/conda/envs/python/lib/python3.6/site-packages/pandas/core/indexes/base.py in get_loc(self, key, method, tolerance)
+       2890             try:
+    -> 2891                 return self._engine.get_loc(casted_key)
+       2892             except KeyError as err:
+
+
+    pandas/_libs/index.pyx in pandas._libs.index.IndexEngine.get_loc()
+
+
+    pandas/_libs/index.pyx in pandas._libs.index.IndexEngine.get_loc()
+
+
+    pandas/_libs/hashtable_class_helper.pxi in pandas._libs.hashtable.PyObjectHashTable.get_item()
+
+
+    pandas/_libs/hashtable_class_helper.pxi in pandas._libs.hashtable.PyObjectHashTable.get_item()
+
+
+    KeyError: 'SEVERITYCODE'
+
+    
+    The above exception was the direct cause of the following exception:
+
+
+    KeyError                                  Traceback (most recent call last)
+
+    <ipython-input-38-275a3e62247f> in <module>
+    ----> 1 y = PersonCountValue[PersonCountValue['SEVERITYCODE'] == 2, "Value_Counts"]
+    
+
+    ~/conda/envs/python/lib/python3.6/site-packages/pandas/core/frame.py in __getitem__(self, key)
+       2900             if self.columns.nlevels > 1:
+       2901                 return self._getitem_multilevel(key)
+    -> 2902             indexer = self.columns.get_loc(key)
+       2903             if is_integer(indexer):
+       2904                 indexer = [indexer]
+
+
+    ~/conda/envs/python/lib/python3.6/site-packages/pandas/core/indexes/base.py in get_loc(self, key, method, tolerance)
+       2891                 return self._engine.get_loc(casted_key)
+       2892             except KeyError as err:
+    -> 2893                 raise KeyError(key) from err
+       2894 
+       2895         if tolerance is not None:
+
+
+    KeyError: 'SEVERITYCODE'
+
+----
+
+
++*In[29]:*+
+[source, ipython3]
+----
+x = PersonCountValue['PERSONCOUNT']
+
+
+plt.scatter(x,y)
+plt.title('Scatter plot of Person Count vs. Severity Code')
+plt.xlabel('Person Count')
+plt.ylabel('Severity Code')
+# Not particularly useful for the model as a feature based on the wide range and variation of value proportions
+----
+
+
++*Out[29]:*+
+----
+
+      File "<ipython-input-29-2aea471e37d5>", line 2
+        y = PersonCountValue['Value_Counts' while 'SEVERITYCODE'==2]
+                                                ^
+    SyntaxError: invalid syntax
+
+
+----
+
+
++*In[16]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['PEDCOUNT'])['SEVERITYCODE'].value_counts(normalize=True)
+# Could transform this to a binary feature (0 or more than 0 for PEDCOUNT) since distribution is similar for all values above 0
+----
+
+
++*Out[16]:*+
+----PEDCOUNT  SEVERITYCODE
+0         1               0.713325
+          2               0.286675
+1         2               0.898771
+          1               0.101229
+2         2               0.915556
+          1               0.084444
+3         2               0.954545
+          1               0.045455
+4         2               1.000000
+5         2               1.000000
+6         2               1.000000
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[17]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['PEDCYLCOUNT'])['SEVERITYCODE'].value_counts(normalize=True)
+# Could transform this to a binary feature (0 or more than 0 for PEDCYLCOUNT) since distribution is similar for all values above 0
+----
+
+
++*Out[17]:*+
+----PEDCYLCOUNT  SEVERITYCODE
+0            1               0.707719
+             2               0.292281
+1            2               0.876442
+             1               0.123558
+2            2               1.000000
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[18]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['VEHCOUNT'])['SEVERITYCODE'].value_counts(normalize=True)
+# Find out how many vehcount = 0 --> could transform to binary feature of 0 and more than 0
+----
+
+
++*Out[18]:*+
+----VEHCOUNT  SEVERITYCODE
+0         2               0.984615
+          1               0.015385
+1         2               0.555076
+          1               0.444924
+2         1               0.748156
+          2               0.251844
+3         1               0.577512
+          2               0.422488
+4         1               0.554632
+          2               0.445368
+5         1               0.503802
+          2               0.496198
+6         1               0.590278
+          2               0.409722
+7         1               0.511111
+          2               0.488889
+8         1               0.666667
+          2               0.333333
+9         2               0.666667
+          1               0.333333
+10        2               1.000000
+11        1               0.500000
+          2               0.500000
+12        1               1.000000
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[19]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['JUNCTIONTYPE'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[19]:*+
+----JUNCTIONTYPE                                       SEVERITYCODE
+At Intersection (but not related to intersection)  1               0.700243
+                                                   2               0.299757
+At Intersection (intersection related)             1               0.563474
+                                                   2               0.436526
+Driveway Junction                                  1               0.696264
+                                                   2               0.303736
+Mid-Block (but intersection related)               1               0.678260
+                                                   2               0.321740
+Mid-Block (not related to intersection)            1               0.782274
+                                                   2               0.217726
+Ramp Junction                                      1               0.687500
+                                                   2               0.312500
+Unknown                                            1               0.800000
+                                                   2               0.200000
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[20]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['SDOT_COLCODE'])['SEVERITYCODE'].value_counts(normalize=True)
+# Possibly too many different categories for a good model
+----
+
+
++*Out[20]:*+
+----SDOT_COLCODE  SEVERITYCODE
+0             1               0.908068
+              2               0.091932
+11            1               0.711601
+              2               0.288399
+12            1               0.980292
+                                ...   
+66            1               0.043478
+68            2               0.750000
+              1               0.250000
+69            2               0.985075
+              1               0.014925
+Name: SEVERITYCODE, Length: 73, dtype: float64----
+
+
++*In[21]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['WEATHER'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[21]:*+
+----WEATHER                   SEVERITYCODE
+Blowing Sand/Dirt         1               0.734694
+                          2               0.265306
+Clear                     1               0.673727
+                          2               0.326273
+Fog/Smog/Smoke            1               0.665468
+                          2               0.334532
+Other                     1               0.847185
+                          2               0.152815
+Overcast                  1               0.681014
+                          2               0.318986
+Partly Cloudy             2               0.600000
+                          1               0.400000
+Raining                   1               0.660468
+                          2               0.339532
+Severe Crosswind          1               0.720000
+                          2               0.280000
+Sleet/Hail/Freezing Rain  1               0.758929
+                          2               0.241071
+Snowing                   1               0.810443
+                          2               0.189557
+Unknown                   1               0.933746
+                          2               0.066254
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[22]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['ROADCOND'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[22]:*+
+----ROADCOND        SEVERITYCODE
+Dry             1               0.674678
+                2               0.325322
+Ice             1               0.773152
+                2               0.226848
+Oil             1               0.600000
+                2               0.400000
+Other           1               0.658537
+                2               0.341463
+Sand/Mud/Dirt   1               0.671642
+                2               0.328358
+Snow/Slush      1               0.831288
+                2               0.168712
+Standing Water  1               0.731481
+                2               0.268519
+Unknown         1               0.938623
+                2               0.061377
+Wet             1               0.665382
+                2               0.334618
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[23]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['LIGHTCOND'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[23]:*+
+----LIGHTCOND                 SEVERITYCODE
+Dark - No Street Lights   1               0.775496
+                          2               0.224504
+Dark - Street Lights Off  1               0.729473
+                          2               0.270527
+Dark - Street Lights On   1               0.698172
+                          2               0.301828
+Dark - Unknown Lighting   1               0.636364
+                          2               0.363636
+Dawn                      1               0.666123
+                          2               0.333877
+Daylight                  1               0.663941
+                          2               0.336059
+Dusk                      1               0.666262
+                          2               0.333738
+Other                     1               0.752381
+                          2               0.247619
+Unknown                   1               0.944870
+                          2               0.055130
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[24]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['ST_COLCODE'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[24]:*+
+----ST_COLCODE  SEVERITYCODE
+0           2               0.910023
+            1               0.089977
+1           2               0.903646
+            1               0.096354
+2           2               0.930926
+                              ...   
+84          2               0.333333
+85          1               1.000000
+87          2               1.000000
+88          1               0.625000
+            2               0.375000
+Name: SEVERITYCODE, Length: 215, dtype: float64----
+
+
++*In[25]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['HITPARKEDCAR'])['SEVERITYCODE'].value_counts(normalize=True)
+# Probably too many categories to fit to a good model
+----
+
+
++*Out[25]:*+
+----HITPARKEDCAR  SEVERITYCODE
+N             1               0.682735
+              2               0.317265
+Y             1               0.928998
+              2               0.071002
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+
+----
