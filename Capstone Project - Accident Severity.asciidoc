@@ -1,0 +1,2960 @@
+== Capstone Project - Car accident severity
+
+== Business Understanding
+
+Using the dataset for collisions, which contains a multitude of
+different features, we would like to understand if any relationships
+occur within the data that could lead to a reliable prediction of
+accident severity; through building appropriate models for the given
+dataset and evaluating the efficacy of said models.
+
+== Data Understanding
+
+The dataset contains information on location type, collision type, types
+of objects/people involved, weather/road conditions and collision
+description, which are all potentially useful attributes to ascertain
+any inter-relationships that could help predict accident severity.
+
+== Data Wrangling, Feature Selection & Handling Missing Data
+
+First we will import the required libraries:
+
+
++*In[7]:*+
+[source, ipython3]
+----
+#import necessary libraries
+import matplotlib.pyplot as plt
+import pandas as pd
+import pylab as pl
+import numpy as np
+import seaborn as sns
+color = sns.color_palette()
+sns.set_style('darkgrid')
+%matplotlib inline
+----
+
+Read in file and check features and values in the first 5 rows:
+
+
++*In[8]:*+
+[source, ipython3]
+----
+accidents = pd.read_csv("Data-Collisions_csv.csv") #read file to notebook
+
+pd.set_option("display.max_columns", None)
+
+accidents.head()
+----
+
+
++*Out[8]:*+
+----
+/home/jupyterlab/conda/envs/python/lib/python3.6/site-packages/IPython/core/interactiveshell.py:3072: DtypeWarning: Columns (33) have mixed types.Specify dtype option on import or set low_memory=False.
+  interactivity=interactivity, compiler=compiler, result=result)
+
+[cols=",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |SEVERITYCODE |X |Y |OBJECTID |INCKEY |COLDETKEY |REPORTNO |STATUS
+|ADDRTYPE |INTKEY |LOCATION |EXCEPTRSNCODE |EXCEPTRSNDESC
+|SEVERITYCODE.1 |SEVERITYDESC |COLLISIONTYPE |PERSONCOUNT |PEDCOUNT
+|PEDCYLCOUNT |VEHCOUNT |INCDATE |INCDTTM |JUNCTIONTYPE |SDOT_COLCODE
+|SDOT_COLDESC |INATTENTIONIND |UNDERINFL |WEATHER |ROADCOND |LIGHTCOND
+|PEDROWNOTGRNT |SDOTCOLNUM |SPEEDING |ST_COLCODE |ST_COLDESC |SEGLANEKEY
+|CROSSWALKKEY |HITPARKEDCAR
+|0 |2 |-122.323148 |47.703140 |1 |1307 |1307 |3502005 |Matched
+|Intersection |37475.0 |5TH AVE NE AND NE 103RD ST | |NaN |2 |Injury
+Collision |Angles |2 |0 |0 |2 |2013/03/27 00:00:00+00 |3/27/2013 2:54:00
+PM |At Intersection (intersection related) |11 |MOTOR VEHICLE STRUCK
+MOTOR VEHICLE, FRONT END ... |NaN |N |Overcast |Wet |Daylight |NaN |NaN
+|NaN |10 |Entering at angle |0 |0 |N
+
+|1 |1 |-122.347294 |47.647172 |2 |52200 |52200 |2607959 |Matched |Block
+|NaN |AURORA BR BETWEEN RAYE ST AND BRIDGE WAY N |NaN |NaN |1 |Property
+Damage Only Collision |Sideswipe |2 |0 |0 |2 |2006/12/20 00:00:00+00
+|12/20/2006 6:55:00 PM |Mid-Block (not related to intersection) |16
+|MOTOR VEHICLE STRUCK MOTOR VEHICLE, LEFT SIDE ... |NaN |0 |Raining |Wet
+|Dark - Street Lights On |NaN |6354039.0 |NaN |11 |From same direction -
+both going straight - bo... |0 |0 |N
+
+|2 |1 |-122.334540 |47.607871 |3 |26700 |26700 |1482393 |Matched |Block
+|NaN |4TH AVE BETWEEN SENECA ST AND UNIVERSITY ST |NaN |NaN |1 |Property
+Damage Only Collision |Parked Car |4 |0 |0 |3 |2004/11/18 00:00:00+00
+|11/18/2004 10:20:00 AM |Mid-Block (not related to intersection) |14
+|MOTOR VEHICLE STRUCK MOTOR VEHICLE, REAR END |NaN |0 |Overcast |Dry
+|Daylight |NaN |4323031.0 |NaN |32 |One parked--one moving |0 |0 |N
+
+|3 |1 |-122.334803 |47.604803 |4 |1144 |1144 |3503937 |Matched |Block
+|NaN |2ND AVE BETWEEN MARION ST AND MADISON ST | |NaN |1 |Property
+Damage Only Collision |Other |3 |0 |0 |3 |2013/03/29 00:00:00+00
+|3/29/2013 9:26:00 AM |Mid-Block (not related to intersection) |11
+|MOTOR VEHICLE STRUCK MOTOR VEHICLE, FRONT END ... |NaN |N |Clear |Dry
+|Daylight |NaN |NaN |NaN |23 |From same direction - all others |0 |0 |N
+
+|4 |2 |-122.306426 |47.545739 |5 |17700 |17700 |1807429 |Matched
+|Intersection |34387.0 |SWIFT AVE S AND SWIFT AV OFF RP |NaN |NaN |2
+|Injury Collision |Angles |2 |0 |0 |2 |2004/01/28 00:00:00+00 |1/28/2004
+8:04:00 AM |At Intersection (intersection related) |11 |MOTOR VEHICLE
+STRUCK MOTOR VEHICLE, FRONT END ... |NaN |0 |Raining |Wet |Daylight |NaN
+|4028032.0 |NaN |10 |Entering at angle |0 |0 |N
+|===
+----
+
+
++*In[9]:*+
+[source, ipython3]
+----
+accidents.describe(include="all")
+----
+
+
++*Out[9]:*+
+----
+[cols=",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |SEVERITYCODE |X |Y |OBJECTID |INCKEY |COLDETKEY |REPORTNO |STATUS
+|ADDRTYPE |INTKEY |LOCATION |EXCEPTRSNCODE |EXCEPTRSNDESC
+|SEVERITYCODE.1 |SEVERITYDESC |COLLISIONTYPE |PERSONCOUNT |PEDCOUNT
+|PEDCYLCOUNT |VEHCOUNT |INCDATE |INCDTTM |JUNCTIONTYPE |SDOT_COLCODE
+|SDOT_COLDESC |INATTENTIONIND |UNDERINFL |WEATHER |ROADCOND |LIGHTCOND
+|PEDROWNOTGRNT |SDOTCOLNUM |SPEEDING |ST_COLCODE |ST_COLDESC |SEGLANEKEY
+|CROSSWALKKEY |HITPARKEDCAR
+|count |194673.000000 |189339.000000 |189339.000000 |194673.000000
+|194673.000000 |194673.000000 |194673 |194673 |192747 |65070.000000
+|191996 |84811 |5638 |194673.000000 |194673 |189769 |194673.000000
+|194673.000000 |194673.000000 |194673.000000 |194673 |194673 |188344
+|194673.000000 |194673 |29805 |189789 |189592 |189661 |189503 |4667
+|1.149360e+05 |9333 |194655 |189769 |194673.000000 |1.946730e+05 |194673
+
+|unique |NaN |NaN |NaN |NaN |NaN |NaN |194670 |2 |3 |NaN |24102 |2 |1
+|NaN |2 |10 |NaN |NaN |NaN |NaN |5985 |162058 |7 |NaN |39 |1 |4 |11 |9
+|9 |1 |NaN |1 |115 |62 |NaN |NaN |2
+
+|top |NaN |NaN |NaN |NaN |NaN |NaN |1782439 |Matched |Block |NaN
+|BATTERY ST TUNNEL NB BETWEEN ALASKAN WY VI NB ... | |Not Enough
+Information, or Insufficient Locati... |NaN |Property Damage Only
+Collision |Parked Car |NaN |NaN |NaN |NaN |2006/11/02 00:00:00+00
+|11/2/2006 |Mid-Block (not related to intersection) |NaN |MOTOR VEHICLE
+STRUCK MOTOR VEHICLE, FRONT END ... |Y |N |Clear |Dry |Daylight |Y |NaN
+|Y |32 |One parked--one moving |NaN |NaN |N
+
+|freq |NaN |NaN |NaN |NaN |NaN |NaN |2 |189786 |126926 |NaN |276 |79173
+|5638 |NaN |136485 |47987 |NaN |NaN |NaN |NaN |96 |96 |89800 |NaN |85209
+|29805 |100274 |111135 |124510 |116137 |4667 |NaN |9333 |27612 |44421
+|NaN |NaN |187457
+
+|mean |1.298901 |-122.330518 |47.619543 |108479.364930 |141091.456350
+|141298.811381 |NaN |NaN |NaN |37558.450576 |NaN |NaN |NaN |1.298901
+|NaN |NaN |2.444427 |0.037139 |0.028391 |1.920780 |NaN |NaN |NaN
+|13.867768 |NaN |NaN |NaN |NaN |NaN |NaN |NaN |7.972521e+06 |NaN |NaN
+|NaN |269.401114 |9.782452e+03 |NaN
+
+|std |0.457778 |0.029976 |0.056157 |62649.722558 |86634.402737
+|86986.542110 |NaN |NaN |NaN |51745.990273 |NaN |NaN |NaN |0.457778 |NaN
+|NaN |1.345929 |0.198150 |0.167413 |0.631047 |NaN |NaN |NaN |6.868755
+|NaN |NaN |NaN |NaN |NaN |NaN |NaN |2.553533e+06 |NaN |NaN |NaN
+|3315.776055 |7.226926e+04 |NaN
+
+|min |1.000000 |-122.419091 |47.495573 |1.000000 |1001.000000
+|1001.000000 |NaN |NaN |NaN |23807.000000 |NaN |NaN |NaN |1.000000 |NaN
+|NaN |0.000000 |0.000000 |0.000000 |0.000000 |NaN |NaN |NaN |0.000000
+|NaN |NaN |NaN |NaN |NaN |NaN |NaN |1.007024e+06 |NaN |NaN |NaN
+|0.000000 |0.000000e+00 |NaN
+
+|25% |1.000000 |-122.348673 |47.575956 |54267.000000 |70383.000000
+|70383.000000 |NaN |NaN |NaN |28667.000000 |NaN |NaN |NaN |1.000000 |NaN
+|NaN |2.000000 |0.000000 |0.000000 |2.000000 |NaN |NaN |NaN |11.000000
+|NaN |NaN |NaN |NaN |NaN |NaN |NaN |6.040015e+06 |NaN |NaN |NaN
+|0.000000 |0.000000e+00 |NaN
+
+|50% |1.000000 |-122.330224 |47.615369 |106912.000000 |123363.000000
+|123363.000000 |NaN |NaN |NaN |29973.000000 |NaN |NaN |NaN |1.000000
+|NaN |NaN |2.000000 |0.000000 |0.000000 |2.000000 |NaN |NaN |NaN
+|13.000000 |NaN |NaN |NaN |NaN |NaN |NaN |NaN |8.023022e+06 |NaN |NaN
+|NaN |0.000000 |0.000000e+00 |NaN
+
+|75% |2.000000 |-122.311937 |47.663664 |162272.000000 |203319.000000
+|203459.000000 |NaN |NaN |NaN |33973.000000 |NaN |NaN |NaN |2.000000
+|NaN |NaN |3.000000 |0.000000 |0.000000 |2.000000 |NaN |NaN |NaN
+|14.000000 |NaN |NaN |NaN |NaN |NaN |NaN |NaN |1.015501e+07 |NaN |NaN
+|NaN |0.000000 |0.000000e+00 |NaN
+
+|max |2.000000 |-122.238949 |47.734142 |219547.000000 |331454.000000
+|332954.000000 |NaN |NaN |NaN |757580.000000 |NaN |NaN |NaN |2.000000
+|NaN |NaN |81.000000 |6.000000 |2.000000 |12.000000 |NaN |NaN |NaN
+|69.000000 |NaN |NaN |NaN |NaN |NaN |NaN |NaN |1.307202e+07 |NaN |NaN
+|NaN |525241.000000 |5.239700e+06 |NaN
+|===
+----
+
+
++*In[10]:*+
+[source, ipython3]
+----
+accidents.shape #dataframe dimensions
+----
+
+
++*Out[10]:*+
+----(194673, 38)----
+
+Now we will change the date format to be Python-friendly in case we want
+to filter data by date:
+
+
++*In[11]:*+
+[source, ipython3]
+----
+import datetime
+import time
+
+date = accidents['INCDATE']
+datelen = len(date)
+
+for i in range (0,datelen):
+    accidents['INCDATE'][i] = accidents['INCDATE'][i].replace('00:00:00+00',' ')                
+    
+
+accidents.head()
+----
+
+
++*Out[11]:*+
+----
+/home/jupyterlab/conda/envs/python/lib/python3.6/site-packages/ipykernel_launcher.py:8: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  
+
+[cols=",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |SEVERITYCODE |X |Y |OBJECTID |INCKEY |COLDETKEY |REPORTNO |STATUS
+|ADDRTYPE |INTKEY |LOCATION |EXCEPTRSNCODE |EXCEPTRSNDESC
+|SEVERITYCODE.1 |SEVERITYDESC |COLLISIONTYPE |PERSONCOUNT |PEDCOUNT
+|PEDCYLCOUNT |VEHCOUNT |INCDATE |INCDTTM |JUNCTIONTYPE |SDOT_COLCODE
+|SDOT_COLDESC |INATTENTIONIND |UNDERINFL |WEATHER |ROADCOND |LIGHTCOND
+|PEDROWNOTGRNT |SDOTCOLNUM |SPEEDING |ST_COLCODE |ST_COLDESC |SEGLANEKEY
+|CROSSWALKKEY |HITPARKEDCAR
+|0 |2 |-122.323148 |47.703140 |1 |1307 |1307 |3502005 |Matched
+|Intersection |37475.0 |5TH AVE NE AND NE 103RD ST | |NaN |2 |Injury
+Collision |Angles |2 |0 |0 |2 |2013/03/27 |3/27/2013 2:54:00 PM |At
+Intersection (intersection related) |11 |MOTOR VEHICLE STRUCK MOTOR
+VEHICLE, FRONT END ... |NaN |N |Overcast |Wet |Daylight |NaN |NaN |NaN
+|10 |Entering at angle |0 |0 |N
+
+|1 |1 |-122.347294 |47.647172 |2 |52200 |52200 |2607959 |Matched |Block
+|NaN |AURORA BR BETWEEN RAYE ST AND BRIDGE WAY N |NaN |NaN |1 |Property
+Damage Only Collision |Sideswipe |2 |0 |0 |2 |2006/12/20 |12/20/2006
+6:55:00 PM |Mid-Block (not related to intersection) |16 |MOTOR VEHICLE
+STRUCK MOTOR VEHICLE, LEFT SIDE ... |NaN |0 |Raining |Wet |Dark - Street
+Lights On |NaN |6354039.0 |NaN |11 |From same direction - both going
+straight - bo... |0 |0 |N
+
+|2 |1 |-122.334540 |47.607871 |3 |26700 |26700 |1482393 |Matched |Block
+|NaN |4TH AVE BETWEEN SENECA ST AND UNIVERSITY ST |NaN |NaN |1 |Property
+Damage Only Collision |Parked Car |4 |0 |0 |3 |2004/11/18 |11/18/2004
+10:20:00 AM |Mid-Block (not related to intersection) |14 |MOTOR VEHICLE
+STRUCK MOTOR VEHICLE, REAR END |NaN |0 |Overcast |Dry |Daylight |NaN
+|4323031.0 |NaN |32 |One parked--one moving |0 |0 |N
+
+|3 |1 |-122.334803 |47.604803 |4 |1144 |1144 |3503937 |Matched |Block
+|NaN |2ND AVE BETWEEN MARION ST AND MADISON ST | |NaN |1 |Property
+Damage Only Collision |Other |3 |0 |0 |3 |2013/03/29 |3/29/2013 9:26:00
+AM |Mid-Block (not related to intersection) |11 |MOTOR VEHICLE STRUCK
+MOTOR VEHICLE, FRONT END ... |NaN |N |Clear |Dry |Daylight |NaN |NaN
+|NaN |23 |From same direction - all others |0 |0 |N
+
+|4 |2 |-122.306426 |47.545739 |5 |17700 |17700 |1807429 |Matched
+|Intersection |34387.0 |SWIFT AVE S AND SWIFT AV OFF RP |NaN |NaN |2
+|Injury Collision |Angles |2 |0 |0 |2 |2004/01/28 |1/28/2004 8:04:00 AM
+|At Intersection (intersection related) |11 |MOTOR VEHICLE STRUCK MOTOR
+VEHICLE, FRONT END ... |NaN |0 |Raining |Wet |Daylight |NaN |4028032.0
+|NaN |10 |Entering at angle |0 |0 |N
+|===
+----
+
+
++*In[12]:*+
+[source, ipython3]
+----
+# The following code was built to be run having evaluated the initial models, in order to see if results would change by filtering for the last 3 years
+# This was requiring too much processing power to complete so I have commented the code so I can come back to it
+
+#for i in range (0,datelen):
+#    if date[i] < '2017/01/01':
+#        accidents.drop(index=i, inplace=True)
+    
+#accidents.head()
+----
+
+Check for missing values in the target variable:
+
+
++*In[13]:*+
+[source, ipython3]
+----
+#Check for missing values in severity code which is the target variable
+severity_missing = accidents["SEVERITYCODE"].isnull()
+----
+
+
++*In[14]:*+
+[source, ipython3]
+----
+severity_missing.value_counts()
+----
+
+
++*Out[14]:*+
+----False    194673
+Name: SEVERITYCODE, dtype: int64----
+
+No missing values in the target variable.
+
+We will now evaluate the data for the target variable:
+
+
++*In[15]:*+
+[source, ipython3]
+----
+accidents["SEVERITYCODE"].unique()
+----
+
+
++*Out[15]:*+
+----array([2, 1])----
+
+
++*In[17]:*+
+[source, ipython3]
+----
+pd.Series(accidents["SEVERITYCODE"]).value_counts().plot(kind='bar')
+----
+
+
++*Out[17]:*+
+----<AxesSubplot:>
+![png](output_20_1.png)
+----
+
+Severity code has just 2 unique values.
+
+Having gone through the attribute information document, identifying
+features which provide the same information or don’t add any value, some
+checks remain:
+
+
++*In[18]:*+
+[source, ipython3]
+----
+accidents["INATTENTIONIND"].isnull().value_counts()/accidents.shape[0]
+----
+
+
++*Out[18]:*+
+----True     0.846897
+False    0.153103
+Name: INATTENTIONIND, dtype: float64----
+
+Remove this feature since the percentage of missing values is too high.
+
+Check the next feature:
+
+
++*In[19]:*+
+[source, ipython3]
+----
+accidents["UNDERINFL"].isnull().value_counts()/accidents.shape[0]
+----
+
+
++*Out[19]:*+
+----False    0.974912
+True     0.025088
+Name: UNDERINFL, dtype: float64----
+
+
++*In[20]:*+
+[source, ipython3]
+----
+accidents["UNDERINFL"].unique()
+----
+
+
++*Out[20]:*+
+----array(['N', '0', nan, '1', 'Y'], dtype=object)----
+
+Low NaN count so will keep this feature, however ``0'' and ``1'' values
+need to be replaced for ``N'' and ``Y'':
+
+
++*In[21]:*+
+[source, ipython3]
+----
+from statistics import mode
+mode=mode(accidents["UNDERINFL"])
+mode
+
+----
+
+
++*Out[21]:*+
+----'N'----
+
+
++*In[22]:*+
+[source, ipython3]
+----
+accidents["UNDERINFL"].replace("0", "N", inplace=True) #replace values which have same meaning
+accidents["UNDERINFL"].replace("1", "Y", inplace=True)
+accidents["UNDERINFL"].replace(np.nan, mode,inplace=True)
+accidents["UNDERINFL"].unique()
+----
+
+
++*Out[22]:*+
+----array(['N', 'Y'], dtype=object)----
+
+Next Feature:
+
+
++*In[23]:*+
+[source, ipython3]
+----
+accidents["PEDROWNOTGRNT"].isnull().value_counts()/accidents.shape[0]
+----
+
+
++*Out[23]:*+
+----True     0.976026
+False    0.023974
+Name: PEDROWNOTGRNT, dtype: float64----
+
+Percentage of NaN values is too high to use this feature.
+
+Next Feature:
+
+
++*In[24]:*+
+[source, ipython3]
+----
+accidents["SPEEDING"].isnull().value_counts()/accidents.shape[0]
+----
+
+
++*Out[24]:*+
+----True     0.952058
+False    0.047942
+Name: SPEEDING, dtype: float64----
+
+Percentage of NaN values is too high to use this feature.
+
+Now we will extract the useful features and create a new dataframe:
+
+
++*In[25]:*+
+[source, ipython3]
+----
+# Extracting features which could be useful predictors (based on attribute information) and create a new dataframe
+accidents_df = accidents[["SEVERITYCODE","ADDRTYPE","COLLISIONTYPE","PERSONCOUNT","PEDCOUNT","PEDCYLCOUNT","VEHCOUNT","JUNCTIONTYPE","SDOT_COLCODE","WEATHER","ROADCOND","LIGHTCOND", "UNDERINFL", "ST_COLCODE","HITPARKEDCAR"]]
+accidents_df.head(20)
+----
+
+
++*Out[25]:*+
+----
+[cols=",,,,,,,,,,,,,,,",options="header",]
+|===
+| |SEVERITYCODE |ADDRTYPE |COLLISIONTYPE |PERSONCOUNT |PEDCOUNT
+|PEDCYLCOUNT |VEHCOUNT |JUNCTIONTYPE |SDOT_COLCODE |WEATHER |ROADCOND
+|LIGHTCOND |UNDERINFL |ST_COLCODE |HITPARKEDCAR
+|0 |2 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Overcast |Wet |Daylight |N |10 |N
+
+|1 |1 |Block |Sideswipe |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |16 |Raining |Wet |Dark - Street Lights On |N |11 |N
+
+|2 |1 |Block |Parked Car |4 |0 |0 |3 |Mid-Block (not related to
+intersection) |14 |Overcast |Dry |Daylight |N |32 |N
+
+|3 |1 |Block |Other |3 |0 |0 |3 |Mid-Block (not related to intersection)
+|11 |Clear |Dry |Daylight |N |23 |N
+
+|4 |2 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Raining |Wet |Daylight |N |10 |N
+
+|5 |1 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Clear |Dry |Daylight |N |10 |N
+
+|6 |1 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Raining |Wet |Daylight |N |10 |N
+
+|7 |2 |Intersection |Cycles |3 |0 |1 |1 |At Intersection (intersection
+related) |51 |Clear |Dry |Daylight |N |5 |N
+
+|8 |1 |Block |Parked Car |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |11 |Clear |Dry |Daylight |N |32 |N
+
+|9 |2 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Clear |Dry |Daylight |N |10 |N
+
+|10 |1 |Alley |Other |2 |0 |0 |2 |Driveway Junction |11 |Overcast |Dry
+|Daylight |N |22 |N
+
+|11 |1 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Clear |Dry |Daylight |N |10 |N
+
+|12 |1 |Block |Rear Ended |0 |0 |0 |2 |Mid-Block (not related to
+intersection) |14 |Raining |Wet |Dark - Street Lights On |N |14 |N
+
+|13 |1 |Block |Parked Car |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |13 |Raining |Wet |Dark - No Street Lights |N |32 |N
+
+|14 |2 |Block |Head On |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |11 |Clear |Dry |Dark - Street Lights On |N |30 |N
+
+|15 |1 |Block |NaN |1 |0 |0 |0 |Driveway Junction |26 |NaN |NaN |NaN |N
+| |N
+
+|16 |2 |Intersection |Left Turn |3 |0 |0 |2 |At Intersection
+(intersection related) |11 |Overcast |Dry |Daylight |N |28 |N
+
+|17 |1 |Block |Rear Ended |0 |0 |0 |2 |Mid-Block (but intersection
+related) |14 |Overcast |Dry |Daylight |N |14 |N
+
+|18 |2 |Block |Rear Ended |4 |0 |0 |3 |Mid-Block (not related to
+intersection) |14 |Clear |Dry |Daylight |N |14 |N
+
+|19 |1 |Block |Parked Car |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |11 |Unknown |Dry |Unknown |N |32 |N
+|===
+----
+
+Check the ratio of missing data for each of the features in the new
+Dataframe:
+
+
++*In[26]:*+
+[source, ipython3]
+----
+missing_data = accidents_df.isnull()
+missing_rat = ((missing_data.sum() / len(missing_data)) * 100).sort_values(ascending=False)
+pd.DataFrame({"Missing Ratio":missing_rat})
+----
+
+
++*Out[26]:*+
+----
+[cols=",",options="header",]
+|===
+| |Missing Ratio
+|JUNCTIONTYPE |3.251093
+|LIGHTCOND |2.655736
+|WEATHER |2.610018
+|ROADCOND |2.574574
+|COLLISIONTYPE |2.519096
+|ADDRTYPE |0.989351
+|ST_COLCODE |0.009246
+|HITPARKEDCAR |0.000000
+|UNDERINFL |0.000000
+|SDOT_COLCODE |0.000000
+|VEHCOUNT |0.000000
+|PEDCYLCOUNT |0.000000
+|PEDCOUNT |0.000000
+|PERSONCOUNT |0.000000
+|SEVERITYCODE |0.000000
+|===
+----
+
+Now we will analyse the features containing missing data to decide how
+to deal with each case:
+
+
++*In[27]:*+
+[source, ipython3]
+----
+pd.Series(accidents_df["JUNCTIONTYPE"]).value_counts().plot(kind='bar') #bar graph showing frequency of each category
+----
+
+
++*Out[27]:*+
+----<AxesSubplot:>
+![png](output_38_1.png)
+----
+
+Since the modal variable does not standout, it is better to remove the
+missing data rows for this feature. Also because it is a very low
+proportion of the total inputs
+
+
++*In[28]:*+
+[source, ipython3]
+----
+accidents_df = accidents_df.drop(accidents_df.loc[accidents_df['JUNCTIONTYPE'].isnull()].index) #removes all rows where "JUNCTIONTYPE" has missing values
+----
+
+
++*In[29]:*+
+[source, ipython3]
+----
+accidents_df['JUNCTIONTYPE'].isnull().value_counts() #check for any missing data in "JUNCTIONTYPE"
+----
+
+
++*Out[29]:*+
+----False    188344
+Name: JUNCTIONTYPE, dtype: int64----
+
+Now we will apply the same analysis to the remaining features that
+contain missing values
+
+
++*In[30]:*+
+[source, ipython3]
+----
+pd.Series(accidents_df["LIGHTCOND"]).value_counts().plot(kind='bar') #bar graph showing frequency of each category
+----
+
+
++*Out[30]:*+
+----<AxesSubplot:>
+![png](output_43_1.png)
+----
+
+Again, to avoid the risk of influencing the model with innaccurate bias,
+it is best to remove the rows containing missing values for this feature
+
+
++*In[31]:*+
+[source, ipython3]
+----
+accidents_df = accidents_df.drop(accidents_df.loc[accidents_df['LIGHTCOND'].isnull()].index) #removes all rows where "LIGHTCOND" has missing values
+----
+
+
++*In[32]:*+
+[source, ipython3]
+----
+accidents_df['LIGHTCOND'].isnull().value_counts() #check for any missing data in "LIGHTCOND"
+----
+
+
++*Out[32]:*+
+----False    183351
+Name: LIGHTCOND, dtype: int64----
+
+
++*In[33]:*+
+[source, ipython3]
+----
+pd.Series(accidents_df["WEATHER"]).value_counts().plot(kind='bar') #bar graph showing frequency of each category
+----
+
+
++*Out[33]:*+
+----<AxesSubplot:>
+![png](output_47_1.png)
+----
+
+
++*In[34]:*+
+[source, ipython3]
+----
+accidents_df = accidents_df.drop(accidents_df.loc[accidents_df['WEATHER'].isnull()].index) #removes all rows where "WEATHER" has missing values
+----
+
+
++*In[35]:*+
+[source, ipython3]
+----
+pd.Series(accidents_df["ROADCOND"]).value_counts().plot(kind='bar') #bar graph showing frequency of each category
+----
+
+
++*Out[35]:*+
+----<AxesSubplot:>
+![png](output_49_1.png)
+----
+
+
++*In[36]:*+
+[source, ipython3]
+----
+accidents_df = accidents_df.drop(accidents_df.loc[accidents_df['ROADCOND'].isnull()].index) #removes all rows where "ROADCOND" has missing values
+----
+
+
++*In[37]:*+
+[source, ipython3]
+----
+pd.Series(accidents_df["COLLISIONTYPE"]).value_counts().plot(kind='bar') #bar graph showing frequency of each category
+----
+
+
++*Out[37]:*+
+----<AxesSubplot:>
+![png](output_51_1.png)
+----
+
+
++*In[38]:*+
+[source, ipython3]
+----
+accidents_df = accidents_df.drop(accidents_df.loc[accidents_df['COLLISIONTYPE'].isnull()].index) #removes all rows where "COLLISIONTYPE" has missing values
+----
+
+
++*In[39]:*+
+[source, ipython3]
+----
+pd.Series(accidents_df["ADDRTYPE"]).value_counts().plot(kind='bar') #bar graph showing frequency of each category
+----
+
+
++*Out[39]:*+
+----<AxesSubplot:>
+![png](output_53_1.png)
+----
+
+
++*In[40]:*+
+[source, ipython3]
+----
+accidents_df = accidents_df.drop(accidents_df.loc[accidents_df['ADDRTYPE'].isnull()].index) #removes all rows where "ADDRTYPE" has missing values
+----
+
+
++*In[41]:*+
+[source, ipython3]
+----
+pd.Series(accidents_df["ST_COLCODE"]).value_counts().plot(kind='bar') #bar graph showing frequency of each category
+----
+
+
++*Out[41]:*+
+----<AxesSubplot:>
+![png](output_55_1.png)
+----
+
+
++*In[42]:*+
+[source, ipython3]
+----
+accidents_df = accidents_df.drop(accidents_df.loc[accidents_df['ST_COLCODE'].isnull()].index) #removes all rows where "ST_COLCODE" has missing values
+----
+
+
++*In[43]:*+
+[source, ipython3]
+----
+accidents_df.isnull().value_counts().sum().max
+----
+
+
++*Out[43]:*+
+----<function int64.max>----
+
+
++*In[44]:*+
+[source, ipython3]
+----
+accidents_df.head(20)
+----
+
+
++*Out[44]:*+
+----
+[cols=",,,,,,,,,,,,,,,",options="header",]
+|===
+| |SEVERITYCODE |ADDRTYPE |COLLISIONTYPE |PERSONCOUNT |PEDCOUNT
+|PEDCYLCOUNT |VEHCOUNT |JUNCTIONTYPE |SDOT_COLCODE |WEATHER |ROADCOND
+|LIGHTCOND |UNDERINFL |ST_COLCODE |HITPARKEDCAR
+|0 |2 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Overcast |Wet |Daylight |N |10 |N
+
+|1 |1 |Block |Sideswipe |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |16 |Raining |Wet |Dark - Street Lights On |N |11 |N
+
+|2 |1 |Block |Parked Car |4 |0 |0 |3 |Mid-Block (not related to
+intersection) |14 |Overcast |Dry |Daylight |N |32 |N
+
+|3 |1 |Block |Other |3 |0 |0 |3 |Mid-Block (not related to intersection)
+|11 |Clear |Dry |Daylight |N |23 |N
+
+|4 |2 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Raining |Wet |Daylight |N |10 |N
+
+|5 |1 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Clear |Dry |Daylight |N |10 |N
+
+|6 |1 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Raining |Wet |Daylight |N |10 |N
+
+|7 |2 |Intersection |Cycles |3 |0 |1 |1 |At Intersection (intersection
+related) |51 |Clear |Dry |Daylight |N |5 |N
+
+|8 |1 |Block |Parked Car |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |11 |Clear |Dry |Daylight |N |32 |N
+
+|9 |2 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Clear |Dry |Daylight |N |10 |N
+
+|10 |1 |Alley |Other |2 |0 |0 |2 |Driveway Junction |11 |Overcast |Dry
+|Daylight |N |22 |N
+
+|11 |1 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Clear |Dry |Daylight |N |10 |N
+
+|12 |1 |Block |Rear Ended |0 |0 |0 |2 |Mid-Block (not related to
+intersection) |14 |Raining |Wet |Dark - Street Lights On |N |14 |N
+
+|13 |1 |Block |Parked Car |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |13 |Raining |Wet |Dark - No Street Lights |N |32 |N
+
+|14 |2 |Block |Head On |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |11 |Clear |Dry |Dark - Street Lights On |N |30 |N
+
+|16 |2 |Intersection |Left Turn |3 |0 |0 |2 |At Intersection
+(intersection related) |11 |Overcast |Dry |Daylight |N |28 |N
+
+|17 |1 |Block |Rear Ended |0 |0 |0 |2 |Mid-Block (but intersection
+related) |14 |Overcast |Dry |Daylight |N |14 |N
+
+|18 |2 |Block |Rear Ended |4 |0 |0 |3 |Mid-Block (not related to
+intersection) |14 |Clear |Dry |Daylight |N |14 |N
+
+|19 |1 |Block |Parked Car |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |11 |Unknown |Dry |Unknown |N |32 |N
+
+|20 |2 |Block |Rear Ended |3 |0 |0 |2 |Mid-Block (not related to
+intersection) |14 |Clear |Dry |Dark - Street Lights On |N |14 |N
+|===
+----
+
+We will reset the index having removed rows from the dataframe:
+
+
++*In[46]:*+
+[source, ipython3]
+----
+accidents_df.reset_index(drop=True, inplace=True)
+accidents_df.head(20)
+----
+
+
++*Out[46]:*+
+----
+[cols=",,,,,,,,,,,,,,,",options="header",]
+|===
+| |SEVERITYCODE |ADDRTYPE |COLLISIONTYPE |PERSONCOUNT |PEDCOUNT
+|PEDCYLCOUNT |VEHCOUNT |JUNCTIONTYPE |SDOT_COLCODE |WEATHER |ROADCOND
+|LIGHTCOND |UNDERINFL |ST_COLCODE |HITPARKEDCAR
+|0 |2 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Overcast |Wet |Daylight |N |10 |N
+
+|1 |1 |Block |Sideswipe |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |16 |Raining |Wet |Dark - Street Lights On |N |11 |N
+
+|2 |1 |Block |Parked Car |4 |0 |0 |3 |Mid-Block (not related to
+intersection) |14 |Overcast |Dry |Daylight |N |32 |N
+
+|3 |1 |Block |Other |3 |0 |0 |3 |Mid-Block (not related to intersection)
+|11 |Clear |Dry |Daylight |N |23 |N
+
+|4 |2 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Raining |Wet |Daylight |N |10 |N
+
+|5 |1 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Clear |Dry |Daylight |N |10 |N
+
+|6 |1 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Raining |Wet |Daylight |N |10 |N
+
+|7 |2 |Intersection |Cycles |3 |0 |1 |1 |At Intersection (intersection
+related) |51 |Clear |Dry |Daylight |N |5 |N
+
+|8 |1 |Block |Parked Car |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |11 |Clear |Dry |Daylight |N |32 |N
+
+|9 |2 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Clear |Dry |Daylight |N |10 |N
+
+|10 |1 |Alley |Other |2 |0 |0 |2 |Driveway Junction |11 |Overcast |Dry
+|Daylight |N |22 |N
+
+|11 |1 |Intersection |Angles |2 |0 |0 |2 |At Intersection (intersection
+related) |11 |Clear |Dry |Daylight |N |10 |N
+
+|12 |1 |Block |Rear Ended |0 |0 |0 |2 |Mid-Block (not related to
+intersection) |14 |Raining |Wet |Dark - Street Lights On |N |14 |N
+
+|13 |1 |Block |Parked Car |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |13 |Raining |Wet |Dark - No Street Lights |N |32 |N
+
+|14 |2 |Block |Head On |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |11 |Clear |Dry |Dark - Street Lights On |N |30 |N
+
+|15 |2 |Intersection |Left Turn |3 |0 |0 |2 |At Intersection
+(intersection related) |11 |Overcast |Dry |Daylight |N |28 |N
+
+|16 |1 |Block |Rear Ended |0 |0 |0 |2 |Mid-Block (but intersection
+related) |14 |Overcast |Dry |Daylight |N |14 |N
+
+|17 |2 |Block |Rear Ended |4 |0 |0 |3 |Mid-Block (not related to
+intersection) |14 |Clear |Dry |Daylight |N |14 |N
+
+|18 |1 |Block |Parked Car |2 |0 |0 |2 |Mid-Block (not related to
+intersection) |11 |Unknown |Dry |Unknown |N |32 |N
+
+|19 |2 |Block |Rear Ended |3 |0 |0 |2 |Mid-Block (not related to
+intersection) |14 |Clear |Dry |Dark - Street Lights On |N |14 |N
+|===
+----
+
+Now we will go through each feature, check the value counts of each
+category and select categories as new features to be modelled if one of
+the severity code categories is >=60%:
+
+
++*In[47]:*+
+[source, ipython3]
+----
+accidents_df['ADDRTYPE'].value_counts() # checking there are enough entries of each type for confidence
+----
+
+
++*Out[47]:*+
+----Block           119362
+Intersection     63298
+Alley              235
+Name: ADDRTYPE, dtype: int64----
+
+
++*In[48]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['ADDRTYPE'])['SEVERITYCODE'].value_counts(normalize=True) # choose feature with >=0.6 proportion for either severity code value
+----
+
+
++*Out[48]:*+
+----ADDRTYPE      SEVERITYCODE
+Alley         1               0.876596
+              2               0.123404
+Block         1               0.754930
+              2               0.245070
+Intersection  1               0.568012
+              2               0.431988
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[49]:*+
+[source, ipython3]
+----
+Feature = accidents_df[['ADDRTYPE']]
+
+Feature = pd.concat([Feature, pd.get_dummies(accidents_df['ADDRTYPE'], prefix='ADD')], axis=1) #make classes of 'ADDRTYPE' a feature and join to 'Feature' dataframe
+Feature.drop(['ADDRTYPE','ADD_Intersection'], axis = 1,inplace=True) #Drop all features where proportion for a severity code is <0.6
+ 
+Feature.head()
+----
+
+
++*Out[49]:*+
+----
+[cols=",,",options="header",]
+|===
+| |ADD_Alley |ADD_Block
+|0 |0 |0
+|1 |0 |1
+|2 |0 |1
+|3 |0 |1
+|4 |0 |0
+|===
+----
+
+
++*In[50]:*+
+[source, ipython3]
+----
+accidents_df['COLLISIONTYPE'].value_counts() # checking there are enough entries of each type for confidence
+----
+
+
++*Out[50]:*+
+----Parked Car    43119
+Angles        34453
+Rear Ended    33641
+Other         22960
+Sideswipe     18285
+Left Turn     13637
+Pedestrian     6513
+Cycles         5362
+Right Turn     2929
+Head On        1996
+Name: COLLISIONTYPE, dtype: int64----
+
+
++*In[51]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['COLLISIONTYPE'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[51]:*+
+----COLLISIONTYPE  SEVERITYCODE
+Angles         1               0.606101
+               2               0.393899
+Cycles         2               0.877098
+               1               0.122902
+Head On        1               0.566132
+               2               0.433868
+Left Turn      1               0.604312
+               2               0.395688
+Other          1               0.738371
+               2               0.261629
+Parked Car     1               0.938960
+               2               0.061040
+Pedestrian     2               0.898511
+               1               0.101489
+Rear Ended     1               0.568205
+               2               0.431795
+Right Turn     1               0.793786
+               2               0.206214
+Sideswipe      1               0.865026
+               2               0.134974
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[52]:*+
+[source, ipython3]
+----
+Feature = pd.concat([Feature, pd.get_dummies(accidents_df['COLLISIONTYPE'], prefix='COLL')], axis=1) #join 'COLLISIONTYPE' categories to 'Feature' dataframe
+ 
+Feature.drop(['COLL_Head On','COLL_Rear Ended'], axis = 1,inplace=True) #Apply same principals as above               
+
+Feature.head()
+----
+
+
++*Out[52]:*+
+----
+[cols=",,,,,,,,,,",options="header",]
+|===
+| |ADD_Alley |ADD_Block |COLL_Angles |COLL_Cycles |COLL_Left Turn
+|COLL_Other |COLL_Parked Car |COLL_Pedestrian |COLL_Right Turn
+|COLL_Sideswipe
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0
+
+|1 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1
+
+|2 |0 |1 |0 |0 |0 |0 |1 |0 |0 |0
+
+|3 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0
+
+|4 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0
+|===
+----
+
+
++*In[53]:*+
+[source, ipython3]
+----
+accidents_df['PERSONCOUNT'].value_counts()
+----
+
+
++*Out[53]:*+
+----2     105703
+3      34812
+4      14327
+1      11232
+5       6541
+0       5365
+6       2686
+7       1121
+8        531
+9        213
+10       127
+11        56
+12        33
+13        21
+14        19
+15        11
+17        11
+16         8
+44         6
+18         6
+20         6
+25         6
+19         5
+26         4
+22         4
+27         3
+28         3
+29         3
+47         3
+32         3
+34         3
+37         3
+23         2
+21         2
+24         2
+30         2
+36         2
+57         1
+31         1
+35         1
+39         1
+41         1
+43         1
+48         1
+53         1
+54         1
+81         1
+Name: PERSONCOUNT, dtype: int64----
+
+For PERSONCOUNT >11, the proportion of each value count compared to the
+total is probably too low to be worth considering.
+
+The Scatter plot below will help with making this decision:
+
+
++*In[54]:*+
+[source, ipython3]
+----
+PersonCountValue = accidents_df.groupby(['PERSONCOUNT'])['SEVERITYCODE'].value_counts(normalize=True) 
+PersonCountValue = PersonCountValue.reset_index(name = 'Value_Counts')
+PCV = PersonCountValue[PersonCountValue['SEVERITYCODE']==2] # creates dataframe from "PersonCountValue" showing values where "SEVERITYCODE==2"
+PCV
+----
+
+
++*Out[54]:*+
+----
+[cols=",,,",options="header",]
+|===
+| |PERSONCOUNT |SEVERITYCODE |Value_Counts
+|1 |0 |2 |0.322833
+|3 |1 |2 |0.262731
+|5 |2 |2 |0.255357
+|7 |3 |2 |0.380357
+|9 |4 |2 |0.431004
+|11 |5 |2 |0.451307
+|12 |6 |2 |0.502606
+|14 |7 |2 |0.564674
+|16 |8 |2 |0.534840
+|18 |9 |2 |0.600939
+|20 |10 |2 |0.582677
+|22 |11 |2 |0.589286
+|24 |12 |2 |0.606061
+|26 |13 |2 |0.571429
+|29 |14 |2 |0.368421
+|30 |15 |2 |0.636364
+|32 |16 |2 |0.625000
+|34 |17 |2 |0.727273
+|37 |18 |2 |0.166667
+|39 |19 |2 |0.400000
+|41 |20 |2 |0.166667
+|44 |22 |2 |0.500000
+|46 |23 |2 |0.500000
+|48 |24 |2 |0.500000
+|50 |25 |2 |0.166667
+|53 |27 |2 |0.333333
+|55 |28 |2 |0.333333
+|57 |29 |2 |0.333333
+|59 |30 |2 |0.500000
+|62 |32 |2 |0.333333
+|63 |34 |2 |0.666667
+|68 |37 |2 |0.333333
+|69 |39 |2 |1.000000
+|74 |48 |2 |1.000000
+|76 |54 |2 |1.000000
+|78 |81 |2 |1.000000
+|===
+----
+
+
++*In[55]:*+
+[source, ipython3]
+----
+x = PCV['PERSONCOUNT']
+y = PCV['Value_Counts']*100
+
+
+plt.scatter(x,y) # creating scatter plot
+plt.title('Scatter plot of Person Count vs. Severity Code')
+plt.xlabel('Person Count')
+plt.ylabel('Percentage Severity Code =2')
+
+----
+
+
++*Out[55]:*+
+----Text(0, 0.5, 'Percentage Severity Code =2')
+![png](output_71_1.png)
+----
+
+We can see from the scatter plot that for PERSONCOUNT>17, the spread
+becomes much more random and so definitely not worth considering
+
+
++*In[56]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['PERSONCOUNT'])['SEVERITYCODE'].value_counts(normalize=True)[0:36]
+----
+
+
++*Out[56]:*+
+----PERSONCOUNT  SEVERITYCODE
+0            1               0.677167
+             2               0.322833
+1            1               0.737269
+             2               0.262731
+2            1               0.744643
+             2               0.255357
+3            1               0.619643
+             2               0.380357
+4            1               0.568996
+             2               0.431004
+5            1               0.548693
+             2               0.451307
+6            2               0.502606
+             1               0.497394
+7            2               0.564674
+             1               0.435326
+8            2               0.534840
+             1               0.465160
+9            2               0.600939
+             1               0.399061
+10           2               0.582677
+             1               0.417323
+11           2               0.589286
+             1               0.410714
+12           2               0.606061
+             1               0.393939
+13           2               0.571429
+             1               0.428571
+14           1               0.631579
+             2               0.368421
+15           2               0.636364
+             1               0.363636
+16           2               0.625000
+             1               0.375000
+17           2               0.727273
+             1               0.272727
+Name: SEVERITYCODE, dtype: float64----
+
+We now want to select the values from PERSONCOUNT where PERSONCOUNT<18.
+First we will make a separate dataframe to simplify this task:
+
+
++*In[57]:*+
+[source, ipython3]
+----
+PERSint = pd.DataFrame(accidents_df['PERSONCOUNT']).astype('int32') #create new dataframe from PERSONCOUNT and convert to integer data type
+PERSlen = len(PERSint)
+PERSint17 = np.zeros(PERSlen)
+
+for i in range(0,PERSlen):           #This loop will add the value of PERSONCOUNT to the new dataframe if the value is <18 otherwise assign the value 999
+    if PERSint['PERSONCOUNT'][i]<18:
+        PERSint17[i] = PERSint['PERSONCOUNT'][i]
+    else:
+        PERSint17[i] = 999
+----
+
+
++*In[58]:*+
+[source, ipython3]
+----
+PERSint17 = pd.DataFrame(PERSint17, columns=['PERSONCOUNT']).astype('int32')
+PERSint17.head(20)
+----
+
+
++*Out[58]:*+
+----
+[cols=",",options="header",]
+|===
+| |PERSONCOUNT
+|0 |2
+|1 |2
+|2 |4
+|3 |3
+|4 |2
+|5 |2
+|6 |2
+|7 |3
+|8 |2
+|9 |2
+|10 |2
+|11 |2
+|12 |0
+|13 |2
+|14 |2
+|15 |3
+|16 |0
+|17 |4
+|18 |2
+|19 |3
+|===
+----
+
+
++*In[59]:*+
+[source, ipython3]
+----
+Feature = pd.concat([Feature, pd.get_dummies(PERSint17['PERSONCOUNT'], prefix='PER')], axis=1) #join PERSONCOUNT categories to 'Feature' dataframe
+
+Feature.drop(['PER_999','PER_4','PER_5','PER_6','PER_7','PER_8','PER_10','PER_11','PER_13'], axis = 1,inplace=True) #Apply same principals as previous
+
+pd.set_option("display.max_columns", None)
+Feature.head()
+----
+
+
++*Out[59]:*+
+----
+[cols=",,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |ADD_Alley |ADD_Block |COLL_Angles |COLL_Cycles |COLL_Left Turn
+|COLL_Other |COLL_Parked Car |COLL_Pedestrian |COLL_Right Turn
+|COLL_Sideswipe |PER_0 |PER_1 |PER_2 |PER_3 |PER_9 |PER_12 |PER_14
+|PER_15 |PER_16 |PER_17
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0
+
+|1 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0
+
+|2 |0 |1 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+
+|3 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0
+
+|4 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0
+|===
+----
+
+
++*In[60]:*+
+[source, ipython3]
+----
+accidents_df['PEDCOUNT'].value_counts()
+----
+
+
++*Out[60]:*+
+----0    176053
+1      6589
+2       225
+3        22
+4         4
+6         1
+5         1
+Name: PEDCOUNT, dtype: int64----
+
+
++*In[61]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['PEDCOUNT'])['SEVERITYCODE'].value_counts(normalize=True)
+# Could transform this to a binary feature (0 or more than 0 for PEDCOUNT) since distribution is similar for all values above 0
+----
+
+
++*Out[61]:*+
+----PEDCOUNT  SEVERITYCODE
+0         1               0.713325
+          2               0.286675
+1         2               0.898771
+          1               0.101229
+2         2               0.915556
+          1               0.084444
+3         2               0.954545
+          1               0.045455
+4         2               1.000000
+5         2               1.000000
+6         2               1.000000
+Name: SEVERITYCODE, dtype: float64----
+
+Will include all categories of PEDCOUNT even with the low count of
+higher numbers, since it follows the trend
+
+
++*In[62]:*+
+[source, ipython3]
+----
+Feature = pd.concat([Feature, pd.get_dummies(accidents_df['PEDCOUNT'], prefix='PED')], axis=1) #join 'PEDCOUNT' categories to 'Feature' dataframe
+ 
+Feature.head()
+----
+
+
++*Out[62]:*+
+----
+[cols=",,,,,,,,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |ADD_Alley |ADD_Block |COLL_Angles |COLL_Cycles |COLL_Left Turn
+|COLL_Other |COLL_Parked Car |COLL_Pedestrian |COLL_Right Turn
+|COLL_Sideswipe |PER_0 |PER_1 |PER_2 |PER_3 |PER_9 |PER_12 |PER_14
+|PER_15 |PER_16 |PER_17 |PED_0 |PED_1 |PED_2 |PED_3 |PED_4 |PED_5 |PED_6
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0
+
+|1 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0
+
+|2 |0 |1 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0
+
+|3 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0
+
+|4 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0
+|===
+----
+
+
++*In[63]:*+
+[source, ipython3]
+----
+accidents_df['PEDCYLCOUNT'].value_counts()
+----
+
+
++*Out[63]:*+
+----0    177480
+1      5374
+2        41
+Name: PEDCYLCOUNT, dtype: int64----
+
+
++*In[64]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['PEDCYLCOUNT'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[64]:*+
+----PEDCYLCOUNT  SEVERITYCODE
+0            1               0.707719
+             2               0.292281
+1            2               0.876442
+             1               0.123558
+2            2               1.000000
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[65]:*+
+[source, ipython3]
+----
+Feature = pd.concat([Feature, pd.get_dummies(accidents_df['PEDCYLCOUNT'], prefix='PEDCY')], axis=1) #join 'PEDCYLCOUNT' categories to 'Feature' dataframe
+ 
+Feature.head()
+----
+
+
++*Out[65]:*+
+----
+[cols=",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |ADD_Alley |ADD_Block |COLL_Angles |COLL_Cycles |COLL_Left Turn
+|COLL_Other |COLL_Parked Car |COLL_Pedestrian |COLL_Right Turn
+|COLL_Sideswipe |PER_0 |PER_1 |PER_2 |PER_3 |PER_9 |PER_12 |PER_14
+|PER_15 |PER_16 |PER_17 |PED_0 |PED_1 |PED_2 |PED_3 |PED_4 |PED_5 |PED_6
+|PEDCY_0 |PEDCY_1 |PEDCY_2
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0
+
+|1 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0
+
+|2 |0 |1 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0
+
+|3 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0
+
+|4 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0
+|===
+----
+
+
++*In[66]:*+
+[source, ipython3]
+----
+accidents_df['VEHCOUNT'].value_counts()
+----
+
+
++*Out[66]:*+
+----2     141647
+1      25029
+3      12869
+4       2407
+5        526
+0        195
+6        144
+7         45
+8         15
+9          9
+11         6
+10         2
+12         1
+Name: VEHCOUNT, dtype: int64----
+
+
++*In[67]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['VEHCOUNT'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[67]:*+
+----VEHCOUNT  SEVERITYCODE
+0         2               0.984615
+          1               0.015385
+1         2               0.555076
+          1               0.444924
+2         1               0.748156
+          2               0.251844
+3         1               0.577512
+          2               0.422488
+4         1               0.554632
+          2               0.445368
+5         1               0.503802
+          2               0.496198
+6         1               0.590278
+          2               0.409722
+7         1               0.511111
+          2               0.488889
+8         1               0.666667
+          2               0.333333
+9         2               0.666667
+          1               0.333333
+10        2               1.000000
+11        1               0.500000
+          2               0.500000
+12        1               1.000000
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[68]:*+
+[source, ipython3]
+----
+Feature = pd.concat([Feature, pd.get_dummies(accidents_df['VEHCOUNT'], prefix='VEH')], axis=1) #join VEHCOUNT categories to 'Feature' dataframe
+ 
+Feature.drop(['VEH_1','VEH_3','VEH_4','VEH_5','VEH_6','VEH_7','VEH_10','VEH_11','VEH_12'], axis = 1,inplace=True) #Apply same principals as previous
+
+Feature.head()
+----
+
+
++*Out[68]:*+
+----
+[cols=",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |ADD_Alley |ADD_Block |COLL_Angles |COLL_Cycles |COLL_Left Turn
+|COLL_Other |COLL_Parked Car |COLL_Pedestrian |COLL_Right Turn
+|COLL_Sideswipe |PER_0 |PER_1 |PER_2 |PER_3 |PER_9 |PER_12 |PER_14
+|PER_15 |PER_16 |PER_17 |PED_0 |PED_1 |PED_2 |PED_3 |PED_4 |PED_5 |PED_6
+|PEDCY_0 |PEDCY_1 |PEDCY_2 |VEH_0 |VEH_2 |VEH_8 |VEH_9
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0
+
+|1 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0
+
+|2 |0 |1 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0
+
+|3 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0
+
+|4 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0
+|===
+----
+
+
++*In[69]:*+
+[source, ipython3]
+----
+accidents_df['JUNCTIONTYPE'].value_counts()
+----
+
+
++*Out[69]:*+
+----Mid-Block (not related to intersection)              86609
+At Intersection (intersection related)               61206
+Mid-Block (but intersection related)                 22341
+Driveway Junction                                    10519
+At Intersection (but not related to intersection)     2055
+Ramp Junction                                          160
+Unknown                                                  5
+Name: JUNCTIONTYPE, dtype: int64----
+
+
++*In[70]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['JUNCTIONTYPE'])['SEVERITYCODE'].value_counts(normalize=True)
+# 'Unknown' is the only class which has a severity code with >0.8 porportion 
+# therefore 'JUNCTIONTYPE' will not be used in the model
+----
+
+
++*Out[70]:*+
+----JUNCTIONTYPE                                       SEVERITYCODE
+At Intersection (but not related to intersection)  1               0.700243
+                                                   2               0.299757
+At Intersection (intersection related)             1               0.563474
+                                                   2               0.436526
+Driveway Junction                                  1               0.696264
+                                                   2               0.303736
+Mid-Block (but intersection related)               1               0.678260
+                                                   2               0.321740
+Mid-Block (not related to intersection)            1               0.782274
+                                                   2               0.217726
+Ramp Junction                                      1               0.687500
+                                                   2               0.312500
+Unknown                                            1               0.800000
+                                                   2               0.200000
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[71]:*+
+[source, ipython3]
+----
+Feature = pd.concat([Feature, pd.get_dummies(accidents_df['JUNCTIONTYPE'], prefix='JUN')], axis=1) #join JUNCTIONTYPE categories to 'Feature' dataframe
+ 
+Feature.drop(['JUN_At Intersection (intersection related)'], axis = 1,inplace=True) #Apply same principals as previous
+
+Feature.head()
+----
+
+
++*Out[71]:*+
+----
+[cols=",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |ADD_Alley |ADD_Block |COLL_Angles |COLL_Cycles |COLL_Left Turn
+|COLL_Other |COLL_Parked Car |COLL_Pedestrian |COLL_Right Turn
+|COLL_Sideswipe |PER_0 |PER_1 |PER_2 |PER_3 |PER_9 |PER_12 |PER_14
+|PER_15 |PER_16 |PER_17 |PED_0 |PED_1 |PED_2 |PED_3 |PED_4 |PED_5 |PED_6
+|PEDCY_0 |PEDCY_1 |PEDCY_2 |VEH_0 |VEH_2 |VEH_8 |VEH_9 |JUN_At
+Intersection (but not related to intersection) |JUN_Driveway Junction
+|JUN_Mid-Block (but intersection related) |JUN_Mid-Block (not related to
+intersection) |JUN_Ramp Junction |JUN_Unknown
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0
+
+|1 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |1 |0 |0
+
+|2 |0 |1 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+
+|3 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+
+|4 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0
+|===
+----
+
+
++*In[72]:*+
+[source, ipython3]
+----
+accidents_df['SDOT_COLCODE'].value_counts()
+----
+
+
++*Out[72]:*+
+----11    83024
+14    52486
+16     9776
+28     8699
+24     6368
+13     5614
+26     4580
+0      3111
+18     3022
+15     1567
+12     1370
+51     1288
+29      472
+21      180
+56      177
+27      160
+54      134
+23      122
+48      106
+31      103
+25      101
+34       92
+64       74
+69       67
+33       53
+55       50
+66       23
+22       16
+32       12
+53        9
+44        8
+61        7
+35        6
+68        4
+36        4
+58        4
+46        3
+52        2
+47        1
+Name: SDOT_COLCODE, dtype: int64----
+
+
++*In[73]:*+
+[source, ipython3]
+----
+pd.set_option("display.max_rows", None)
+pd.DataFrame(accidents_df.groupby(['SDOT_COLCODE'])['SEVERITYCODE'].value_counts(normalize=True))
+----
+
+
++*Out[73]:*+
+----
+SEVERITYCODE
+
+SDOT_COLCODE
+
+SEVERITYCODE
+
+0
+
+1
+
+0.908068
+
+2
+
+0.091932
+
+11
+
+1
+
+0.711601
+
+2
+
+0.288399
+
+12
+
+1
+
+0.980292
+
+2
+
+0.019708
+
+13
+
+1
+
+0.964909
+
+2
+
+0.035091
+
+14
+
+1
+
+0.670026
+
+2
+
+0.329974
+
+15
+
+1
+
+0.953414
+
+2
+
+0.046586
+
+16
+
+1
+
+0.929930
+
+2
+
+0.070070
+
+18
+
+2
+
+0.885506
+
+1
+
+0.114494
+
+21
+
+2
+
+0.777778
+
+1
+
+0.222222
+
+22
+
+2
+
+0.937500
+
+1
+
+0.062500
+
+23
+
+2
+
+0.745902
+
+1
+
+0.254098
+
+24
+
+2
+
+0.899655
+
+1
+
+0.100345
+
+25
+
+1
+
+0.811881
+
+2
+
+0.188119
+
+26
+
+1
+
+0.752402
+
+2
+
+0.247598
+
+27
+
+1
+
+0.775000
+
+2
+
+0.225000
+
+28
+
+1
+
+0.742959
+
+2
+
+0.257041
+
+29
+
+2
+
+0.752119
+
+1
+
+0.247881
+
+31
+
+1
+
+0.932039
+
+2
+
+0.067961
+
+32
+
+1
+
+0.916667
+
+2
+
+0.083333
+
+33
+
+1
+
+0.962264
+
+2
+
+0.037736
+
+34
+
+1
+
+0.902174
+
+2
+
+0.097826
+
+35
+
+1
+
+0.833333
+
+2
+
+0.166667
+
+36
+
+1
+
+0.750000
+
+2
+
+0.250000
+
+44
+
+2
+
+1.000000
+
+46
+
+1
+
+1.000000
+
+47
+
+1
+
+1.000000
+
+48
+
+1
+
+0.896226
+
+2
+
+0.103774
+
+51
+
+2
+
+0.885093
+
+1
+
+0.114907
+
+52
+
+1
+
+0.500000
+
+2
+
+0.500000
+
+53
+
+2
+
+0.777778
+
+1
+
+0.222222
+
+54
+
+2
+
+0.776119
+
+1
+
+0.223881
+
+55
+
+2
+
+0.800000
+
+1
+
+0.200000
+
+56
+
+2
+
+0.892655
+
+1
+
+0.107345
+
+58
+
+2
+
+1.000000
+
+61
+
+2
+
+1.000000
+
+64
+
+2
+
+0.959459
+
+1
+
+0.040541
+
+66
+
+2
+
+0.956522
+
+1
+
+0.043478
+
+68
+
+2
+
+0.750000
+
+1
+
+0.250000
+
+69
+
+2
+
+0.985075
+
+1
+
+0.014925
+----
+
+
++*In[74]:*+
+[source, ipython3]
+----
+Feature = pd.concat([Feature, pd.get_dummies(accidents_df['SDOT_COLCODE'], prefix='SDOT')], axis=1) #join SDOT_COLCODE categories to 'Feature' dataframe
+ 
+Feature.drop(['SDOT_68','SDOT_36','SDOT_58','SDOT_46','SDOT_52','SDOT_47'], axis = 1,inplace=True) #Apply same principals as previous
+
+Feature.head()
+----
+
+
++*Out[74]:*+
+----
+[cols=",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |ADD_Alley |ADD_Block |COLL_Angles |COLL_Cycles |COLL_Left Turn
+|COLL_Other |COLL_Parked Car |COLL_Pedestrian |COLL_Right Turn
+|COLL_Sideswipe |PER_0 |PER_1 |PER_2 |PER_3 |PER_9 |PER_12 |PER_14
+|PER_15 |PER_16 |PER_17 |PED_0 |PED_1 |PED_2 |PED_3 |PED_4 |PED_5 |PED_6
+|PEDCY_0 |PEDCY_1 |PEDCY_2 |VEH_0 |VEH_2 |VEH_8 |VEH_9 |JUN_At
+Intersection (but not related to intersection) |JUN_Driveway Junction
+|JUN_Mid-Block (but intersection related) |JUN_Mid-Block (not related to
+intersection) |JUN_Ramp Junction |JUN_Unknown |SDOT_0 |SDOT_11 |SDOT_12
+|SDOT_13 |SDOT_14 |SDOT_15 |SDOT_16 |SDOT_18 |SDOT_21 |SDOT_22 |SDOT_23
+|SDOT_24 |SDOT_25 |SDOT_26 |SDOT_27 |SDOT_28 |SDOT_29 |SDOT_31 |SDOT_32
+|SDOT_33 |SDOT_34 |SDOT_35 |SDOT_44 |SDOT_48 |SDOT_51 |SDOT_53 |SDOT_54
+|SDOT_55 |SDOT_56 |SDOT_61 |SDOT_64 |SDOT_66 |SDOT_69
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0
+
+|1 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |1
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0
+
+|2 |0 |1 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0
+
+|3 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0
+
+|4 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0
+|===
+----
+
+
++*In[75]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['WEATHER'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[75]:*+
+----WEATHER                   SEVERITYCODE
+Blowing Sand/Dirt         1               0.734694
+                          2               0.265306
+Clear                     1               0.673727
+                          2               0.326273
+Fog/Smog/Smoke            1               0.665468
+                          2               0.334532
+Other                     1               0.847185
+                          2               0.152815
+Overcast                  1               0.681014
+                          2               0.318986
+Partly Cloudy             2               0.600000
+                          1               0.400000
+Raining                   1               0.660468
+                          2               0.339532
+Severe Crosswind          1               0.720000
+                          2               0.280000
+Sleet/Hail/Freezing Rain  1               0.758929
+                          2               0.241071
+Snowing                   1               0.810443
+                          2               0.189557
+Unknown                   1               0.933746
+                          2               0.066254
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[76]:*+
+[source, ipython3]
+----
+accidents_df['WEATHER'].value_counts()
+----
+
+
++*Out[76]:*+
+----Clear                       109059
+Raining                      32642
+Overcast                     27183
+Unknown                      11637
+Snowing                        881
+Other                          746
+Fog/Smog/Smoke                 556
+Sleet/Hail/Freezing Rain       112
+Blowing Sand/Dirt               49
+Severe Crosswind                25
+Partly Cloudy                    5
+Name: WEATHER, dtype: int64----
+
+
++*In[77]:*+
+[source, ipython3]
+----
+Feature = pd.concat([Feature, pd.get_dummies(accidents_df['WEATHER'])], axis=1)
+
+Feature.head()
+----
+
+
++*Out[77]:*+
+----
+[cols=",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |ADD_Alley |ADD_Block |COLL_Angles |COLL_Cycles |COLL_Left Turn
+|COLL_Other |COLL_Parked Car |COLL_Pedestrian |COLL_Right Turn
+|COLL_Sideswipe |PER_0 |PER_1 |PER_2 |PER_3 |PER_9 |PER_12 |PER_14
+|PER_15 |PER_16 |PER_17 |PED_0 |PED_1 |PED_2 |PED_3 |PED_4 |PED_5 |PED_6
+|PEDCY_0 |PEDCY_1 |PEDCY_2 |VEH_0 |VEH_2 |VEH_8 |VEH_9 |JUN_At
+Intersection (but not related to intersection) |JUN_Driveway Junction
+|JUN_Mid-Block (but intersection related) |JUN_Mid-Block (not related to
+intersection) |JUN_Ramp Junction |JUN_Unknown |SDOT_0 |SDOT_11 |SDOT_12
+|SDOT_13 |SDOT_14 |SDOT_15 |SDOT_16 |SDOT_18 |SDOT_21 |SDOT_22 |SDOT_23
+|SDOT_24 |SDOT_25 |SDOT_26 |SDOT_27 |SDOT_28 |SDOT_29 |SDOT_31 |SDOT_32
+|SDOT_33 |SDOT_34 |SDOT_35 |SDOT_44 |SDOT_48 |SDOT_51 |SDOT_53 |SDOT_54
+|SDOT_55 |SDOT_56 |SDOT_61 |SDOT_64 |SDOT_66 |SDOT_69 |Blowing Sand/Dirt
+|Clear |Fog/Smog/Smoke |Other |Overcast |Partly Cloudy |Raining |Severe
+Crosswind |Sleet/Hail/Freezing Rain |Snowing |Unknown
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0
+
+|1 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |1
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0
+
+|2 |0 |1 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0
+
+|3 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0
+
+|4 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0
+|===
+----
+
+
++*In[78]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['ROADCOND'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[78]:*+
+----ROADCOND        SEVERITYCODE
+Dry             1               0.674678
+                2               0.325322
+Ice             1               0.773152
+                2               0.226848
+Oil             1               0.600000
+                2               0.400000
+Other           1               0.658537
+                2               0.341463
+Sand/Mud/Dirt   1               0.671642
+                2               0.328358
+Snow/Slush      1               0.831288
+                2               0.168712
+Standing Water  1               0.731481
+                2               0.268519
+Unknown         1               0.938623
+                2               0.061377
+Wet             1               0.665382
+                2               0.334618
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[79]:*+
+[source, ipython3]
+----
+accidents_df['ROADCOND'].value_counts()
+----
+
+
++*Out[79]:*+
+----Dry               122153
+Wet                46710
+Unknown            11519
+Ice                 1177
+Snow/Slush           978
+Other                123
+Standing Water       108
+Sand/Mud/Dirt         67
+Oil                   60
+Name: ROADCOND, dtype: int64----
+
+
++*In[80]:*+
+[source, ipython3]
+----
+Feature = pd.concat([Feature, pd.get_dummies(accidents_df['ROADCOND'], prefix='ROA')], axis=1)
+
+Feature.head()
+# Applied same principals as before
+----
+
+
++*Out[80]:*+
+----
+[cols=",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |ADD_Alley |ADD_Block |COLL_Angles |COLL_Cycles |COLL_Left Turn
+|COLL_Other |COLL_Parked Car |COLL_Pedestrian |COLL_Right Turn
+|COLL_Sideswipe |PER_0 |PER_1 |PER_2 |PER_3 |PER_9 |PER_12 |PER_14
+|PER_15 |PER_16 |PER_17 |PED_0 |PED_1 |PED_2 |PED_3 |PED_4 |PED_5 |PED_6
+|PEDCY_0 |PEDCY_1 |PEDCY_2 |VEH_0 |VEH_2 |VEH_8 |VEH_9 |JUN_At
+Intersection (but not related to intersection) |JUN_Driveway Junction
+|JUN_Mid-Block (but intersection related) |JUN_Mid-Block (not related to
+intersection) |JUN_Ramp Junction |JUN_Unknown |SDOT_0 |SDOT_11 |SDOT_12
+|SDOT_13 |SDOT_14 |SDOT_15 |SDOT_16 |SDOT_18 |SDOT_21 |SDOT_22 |SDOT_23
+|SDOT_24 |SDOT_25 |SDOT_26 |SDOT_27 |SDOT_28 |SDOT_29 |SDOT_31 |SDOT_32
+|SDOT_33 |SDOT_34 |SDOT_35 |SDOT_44 |SDOT_48 |SDOT_51 |SDOT_53 |SDOT_54
+|SDOT_55 |SDOT_56 |SDOT_61 |SDOT_64 |SDOT_66 |SDOT_69 |Blowing Sand/Dirt
+|Clear |Fog/Smog/Smoke |Other |Overcast |Partly Cloudy |Raining |Severe
+Crosswind |Sleet/Hail/Freezing Rain |Snowing |Unknown |ROA_Dry |ROA_Ice
+|ROA_Oil |ROA_Other |ROA_Sand/Mud/Dirt |ROA_Snow/Slush |ROA_Standing
+Water |ROA_Unknown |ROA_Wet
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1
+
+|1 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |1
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1
+
+|2 |0 |1 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0
+
+|3 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0
+
+|4 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1
+|===
+----
+
+
++*In[81]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['LIGHTCOND'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[81]:*+
+----LIGHTCOND                 SEVERITYCODE
+Dark - No Street Lights   1               0.775496
+                          2               0.224504
+Dark - Street Lights Off  1               0.729473
+                          2               0.270527
+Dark - Street Lights On   1               0.698172
+                          2               0.301828
+Dark - Unknown Lighting   1               0.636364
+                          2               0.363636
+Dawn                      1               0.666123
+                          2               0.333877
+Daylight                  1               0.663941
+                          2               0.336059
+Dusk                      1               0.666262
+                          2               0.333738
+Other                     1               0.752381
+                          2               0.247619
+Unknown                   1               0.944870
+                          2               0.055130
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[82]:*+
+[source, ipython3]
+----
+accidents_df['LIGHTCOND'].value_counts()
+----
+
+
++*Out[82]:*+
+----Daylight                    113837
+Dark - Street Lights On      47547
+Unknown                      10448
+Dusk                          5771
+Dawn                          2453
+Dark - No Street Lights       1461
+Dark - Street Lights Off      1157
+Other                          210
+Dark - Unknown Lighting         11
+Name: LIGHTCOND, dtype: int64----
+
+
++*In[83]:*+
+[source, ipython3]
+----
+Feature = pd.concat([Feature, pd.get_dummies(accidents_df['LIGHTCOND'], prefix='LIG')], axis=1) 
+ 
+Feature.head()
+----
+
+
++*Out[83]:*+
+----
+[cols=",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |ADD_Alley |ADD_Block |COLL_Angles |COLL_Cycles |COLL_Left Turn
+|COLL_Other |COLL_Parked Car |COLL_Pedestrian |COLL_Right Turn
+|COLL_Sideswipe |PER_0 |PER_1 |PER_2 |PER_3 |PER_9 |PER_12 |PER_14
+|PER_15 |PER_16 |PER_17 |PED_0 |PED_1 |PED_2 |PED_3 |PED_4 |PED_5 |PED_6
+|PEDCY_0 |PEDCY_1 |PEDCY_2 |VEH_0 |VEH_2 |VEH_8 |VEH_9 |JUN_At
+Intersection (but not related to intersection) |JUN_Driveway Junction
+|JUN_Mid-Block (but intersection related) |JUN_Mid-Block (not related to
+intersection) |JUN_Ramp Junction |JUN_Unknown |SDOT_0 |SDOT_11 |SDOT_12
+|SDOT_13 |SDOT_14 |SDOT_15 |SDOT_16 |SDOT_18 |SDOT_21 |SDOT_22 |SDOT_23
+|SDOT_24 |SDOT_25 |SDOT_26 |SDOT_27 |SDOT_28 |SDOT_29 |SDOT_31 |SDOT_32
+|SDOT_33 |SDOT_34 |SDOT_35 |SDOT_44 |SDOT_48 |SDOT_51 |SDOT_53 |SDOT_54
+|SDOT_55 |SDOT_56 |SDOT_61 |SDOT_64 |SDOT_66 |SDOT_69 |Blowing Sand/Dirt
+|Clear |Fog/Smog/Smoke |Other |Overcast |Partly Cloudy |Raining |Severe
+Crosswind |Sleet/Hail/Freezing Rain |Snowing |Unknown |ROA_Dry |ROA_Ice
+|ROA_Oil |ROA_Other |ROA_Sand/Mud/Dirt |ROA_Snow/Slush |ROA_Standing
+Water |ROA_Unknown |ROA_Wet |LIG_Dark - No Street Lights |LIG_Dark -
+Street Lights Off |LIG_Dark - Street Lights On |LIG_Dark - Unknown
+Lighting |LIG_Dawn |LIG_Daylight |LIG_Dusk |LIG_Other |LIG_Unknown
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |1 |0 |0 |0
+
+|1 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |1
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|1 |0 |0 |0 |0 |0 |0
+
+|2 |0 |1 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |1 |0 |0 |0
+
+|3 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |1 |0 |0 |0
+
+|4 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |1 |0 |0 |0
+|===
+----
+
+
++*In[84]:*+
+[source, ipython3]
+----
+accidents_df['UNDERINFL'].value_counts()
+----
+
+
++*Out[84]:*+
+----N    173898
+Y      8997
+Name: UNDERINFL, dtype: int64----
+
+
++*In[85]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['UNDERINFL'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[85]:*+
+----UNDERINFL  SEVERITYCODE
+N          1               0.694666
+           2               0.305334
+Y          1               0.607869
+           2               0.392131
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[86]:*+
+[source, ipython3]
+----
+Feature = pd.concat([Feature, pd.get_dummies(accidents_df['UNDERINFL'], prefix='UN')], axis=1) 
+ 
+Feature.head()
+----
+
+
++*Out[86]:*+
+----
+[cols=",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |ADD_Alley |ADD_Block |COLL_Angles |COLL_Cycles |COLL_Left Turn
+|COLL_Other |COLL_Parked Car |COLL_Pedestrian |COLL_Right Turn
+|COLL_Sideswipe |PER_0 |PER_1 |PER_2 |PER_3 |PER_9 |PER_12 |PER_14
+|PER_15 |PER_16 |PER_17 |PED_0 |PED_1 |PED_2 |PED_3 |PED_4 |PED_5 |PED_6
+|PEDCY_0 |PEDCY_1 |PEDCY_2 |VEH_0 |VEH_2 |VEH_8 |VEH_9 |JUN_At
+Intersection (but not related to intersection) |JUN_Driveway Junction
+|JUN_Mid-Block (but intersection related) |JUN_Mid-Block (not related to
+intersection) |JUN_Ramp Junction |JUN_Unknown |SDOT_0 |SDOT_11 |SDOT_12
+|SDOT_13 |SDOT_14 |SDOT_15 |SDOT_16 |SDOT_18 |SDOT_21 |SDOT_22 |SDOT_23
+|SDOT_24 |SDOT_25 |SDOT_26 |SDOT_27 |SDOT_28 |SDOT_29 |SDOT_31 |SDOT_32
+|SDOT_33 |SDOT_34 |SDOT_35 |SDOT_44 |SDOT_48 |SDOT_51 |SDOT_53 |SDOT_54
+|SDOT_55 |SDOT_56 |SDOT_61 |SDOT_64 |SDOT_66 |SDOT_69 |Blowing Sand/Dirt
+|Clear |Fog/Smog/Smoke |Other |Overcast |Partly Cloudy |Raining |Severe
+Crosswind |Sleet/Hail/Freezing Rain |Snowing |Unknown |ROA_Dry |ROA_Ice
+|ROA_Oil |ROA_Other |ROA_Sand/Mud/Dirt |ROA_Snow/Slush |ROA_Standing
+Water |ROA_Unknown |ROA_Wet |LIG_Dark - No Street Lights |LIG_Dark -
+Street Lights Off |LIG_Dark - Street Lights On |LIG_Dark - Unknown
+Lighting |LIG_Dawn |LIG_Daylight |LIG_Dusk |LIG_Other |LIG_Unknown |UN_N
+|UN_Y
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |1 |0 |0 |0 |1 |0
+
+|1 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |1
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|1 |0 |0 |0 |0 |0 |0 |1 |0
+
+|2 |0 |1 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |1 |0 |0 |0 |1 |0
+
+|3 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |1 |0 |0 |0 |1 |0
+
+|4 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |1 |0 |0 |0 |1 |0
+|===
+----
+
+Won’t use ST_COLCODE as it provides the same information as SDOT_COLCODE
+
+
++*In[87]:*+
+[source, ipython3]
+----
+accidents_df.groupby(['HITPARKEDCAR'])['SEVERITYCODE'].value_counts(normalize=True)
+----
+
+
++*Out[87]:*+
+----HITPARKEDCAR  SEVERITYCODE
+N             1               0.682735
+              2               0.317265
+Y             1               0.928998
+              2               0.071002
+Name: SEVERITYCODE, dtype: float64----
+
+
++*In[88]:*+
+[source, ipython3]
+----
+Feature = pd.concat([Feature, pd.get_dummies(accidents_df['HITPARKEDCAR'], prefix='HIT')], axis=1)
+
+Feature.head()
+----
+
+
++*Out[88]:*+
+----
+[cols=",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",options="header",]
+|===
+| |ADD_Alley |ADD_Block |COLL_Angles |COLL_Cycles |COLL_Left Turn
+|COLL_Other |COLL_Parked Car |COLL_Pedestrian |COLL_Right Turn
+|COLL_Sideswipe |PER_0 |PER_1 |PER_2 |PER_3 |PER_9 |PER_12 |PER_14
+|PER_15 |PER_16 |PER_17 |PED_0 |PED_1 |PED_2 |PED_3 |PED_4 |PED_5 |PED_6
+|PEDCY_0 |PEDCY_1 |PEDCY_2 |VEH_0 |VEH_2 |VEH_8 |VEH_9 |JUN_At
+Intersection (but not related to intersection) |JUN_Driveway Junction
+|JUN_Mid-Block (but intersection related) |JUN_Mid-Block (not related to
+intersection) |JUN_Ramp Junction |JUN_Unknown |SDOT_0 |SDOT_11 |SDOT_12
+|SDOT_13 |SDOT_14 |SDOT_15 |SDOT_16 |SDOT_18 |SDOT_21 |SDOT_22 |SDOT_23
+|SDOT_24 |SDOT_25 |SDOT_26 |SDOT_27 |SDOT_28 |SDOT_29 |SDOT_31 |SDOT_32
+|SDOT_33 |SDOT_34 |SDOT_35 |SDOT_44 |SDOT_48 |SDOT_51 |SDOT_53 |SDOT_54
+|SDOT_55 |SDOT_56 |SDOT_61 |SDOT_64 |SDOT_66 |SDOT_69 |Blowing Sand/Dirt
+|Clear |Fog/Smog/Smoke |Other |Overcast |Partly Cloudy |Raining |Severe
+Crosswind |Sleet/Hail/Freezing Rain |Snowing |Unknown |ROA_Dry |ROA_Ice
+|ROA_Oil |ROA_Other |ROA_Sand/Mud/Dirt |ROA_Snow/Slush |ROA_Standing
+Water |ROA_Unknown |ROA_Wet |LIG_Dark - No Street Lights |LIG_Dark -
+Street Lights Off |LIG_Dark - Street Lights On |LIG_Dark - Unknown
+Lighting |LIG_Dawn |LIG_Daylight |LIG_Dusk |LIG_Other |LIG_Unknown |UN_N
+|UN_Y |HIT_N |HIT_Y
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |1 |0 |0 |0 |1 |0 |1 |0
+
+|1 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |1
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|1 |0 |0 |0 |0 |0 |0 |1 |0 |1 |0
+
+|2 |0 |1 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |1 |0 |0 |0 |1 |0 |1 |0
+
+|3 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |1 |0 |0 |0 |1 |0 |1 |0
+
+|4 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |0 |1 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0
+|0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |0 |1 |0 |0
+|0 |0 |0 |1 |0 |0 |0 |1 |0 |1 |0
+|===
+----
+
+Now we will split the data into feature data (x_data) and the dependent
+variable (y_data) for modelling. Followed by creating a training and
+testing set of data
+
+
++*In[89]:*+
+[source, ipython3]
+----
+# Create separate frame for target data and categorical data
+y_data = accidents_df['SEVERITYCODE']
+x_data = Feature
+----
+
+
++*In[90]:*+
+[source, ipython3]
+----
+from sklearn.model_selection import train_test_split
+
+
+# function "train_test_split" randomly separates data into training and test data
+x_train, x_test, y_train, y_test = train_test_split(x_data, y_data, test_size=0.15, random_state=1)
+
+
+print("number of test samples :", x_test.shape[0])
+print("number of training samples:",x_train.shape[0])
+
+----
+
+
++*Out[90]:*+
+----
+number of test samples : 27435
+number of training samples: 155460
+----
+
+Now we will create a tree diagram to assess it’s viability as a model
+
+
++*In[91]:*+
+[source, ipython3]
+----
+from sklearn.tree import DecisionTreeClassifier
+
+drugTree = DecisionTreeClassifier(criterion="entropy", max_depth = 9)
+drugTree # it shows the default parameters
+----
+
+
++*Out[91]:*+
+----DecisionTreeClassifier(class_weight=None, criterion='entropy', max_depth=9,
+            max_features=None, max_leaf_nodes=None,
+            min_impurity_decrease=0.0, min_impurity_split=None,
+            min_samples_leaf=1, min_samples_split=2,
+            min_weight_fraction_leaf=0.0, presort=False, random_state=None,
+            splitter='best')----
+
+
++*In[92]:*+
+[source, ipython3]
+----
+drugTree.fit(x_train,y_train)
+----
+
+
++*Out[92]:*+
+----DecisionTreeClassifier(class_weight=None, criterion='entropy', max_depth=9,
+            max_features=None, max_leaf_nodes=None,
+            min_impurity_decrease=0.0, min_impurity_split=None,
+            min_samples_leaf=1, min_samples_split=2,
+            min_weight_fraction_leaf=0.0, presort=False, random_state=None,
+            splitter='best')----
+
+
++*In[93]:*+
+[source, ipython3]
+----
+predTree = drugTree.predict(x_test)
+print (predTree [0:5])
+print (y_test [0:5])
+----
+
+
++*Out[93]:*+
+----
+[1 1 2 1 2]
+170087    1
+97219     1
+157143    2
+135936    1
+114888    2
+Name: SEVERITYCODE, dtype: int64
+----
+
+
++*In[94]:*+
+[source, ipython3]
+----
+from sklearn import metrics
+
+print("DecisionTrees's Accuracy: ", metrics.accuracy_score(y_test, predTree)) # Check accuracy of the model
+----
+
+
++*Out[94]:*+
+----
+DecisionTrees's Accuracy:  0.7515946783305996
+----
+
+We will create another form of classification model using Logistic
+Regression & use a Confusion Matrix to assess the accuracy
+
+
++*In[95]:*+
+[source, ipython3]
+----
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix
+
+LR = LogisticRegression(C=0.5, solver='liblinear').fit(x_train,y_train)
+LR
+----
+
+
++*Out[95]:*+
+----LogisticRegression(C=0.5, class_weight=None, dual=False, fit_intercept=True,
+          intercept_scaling=1, max_iter=100, multi_class='warn',
+          n_jobs=None, penalty='l2', random_state=None, solver='liblinear',
+          tol=0.0001, verbose=0, warm_start=False)----
+
+
++*In[96]:*+
+[source, ipython3]
+----
+yhat = LR.predict(x_test)
+yhat[0:5]
+----
+
+
++*Out[96]:*+
+----array([1, 1, 2, 1, 2])----
+
+
++*In[97]:*+
+[source, ipython3]
+----
+# predict_proba returns estimates for all classes, ordered by the label of classes. So, the first column output is the probability of class 2, P(Y=2|X),
+# and second column is probability of class 1, P(Y=1|X) #
+
+yhat_prob = LR.predict_proba(x_test)
+yhat_prob[0:5]
+----
+
+
++*Out[97]:*+
+----array([[0.66582044, 0.33417956],
+       [0.65419159, 0.34580841],
+       [0.09260745, 0.90739255],
+       [0.91122285, 0.08877715],
+       [0.37766451, 0.62233549]])----
+
+Log loss(Logarithmic loss) measures the performance of a classifier
+where the predicted output is a probability value between 0 and 1
+
+
++*In[98]:*+
+[source, ipython3]
+----
+from sklearn.metrics import log_loss
+log_loss(y_test, yhat_prob)
+----
+
+
++*Out[98]:*+
+----0.4851923723105732----
+
+
++*In[99]:*+
+[source, ipython3]
+----
+# We will use jaccard index for accuracy evaluation. we can define jaccard as the size of the intersection divided by the size of the union of two label sets
+# If the entire set of predicted labels for a sample strictly match with the true set of labels, then the subset accuracy is 1.0; otherwise it is 0.0 #
+
+from sklearn.metrics import jaccard_similarity_score
+jaccard_similarity_score(y_test, yhat)
+----
+
+
++*Out[99]:*+
+----0.7498815381811554----
+
+
++*In[100]:*+
+[source, ipython3]
+----
+# we will use a confusion matrix to determine the accuracy of the classifier.
+# First we need to define the plotting function #
+
+from sklearn.metrics import classification_report, confusion_matrix
+import itertools
+def plot_confusion_matrix(cm, classes,
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+print(confusion_matrix(y_test, yhat, labels=[2,1]))
+----
+
+
++*Out[100]:*+
+----
+[[ 3029  5446]
+ [ 1416 17544]]
+----
+
+
++*In[101]:*+
+[source, ipython3]
+----
+# Compute confusion matrix
+cnf_matrix = confusion_matrix(y_test, yhat, labels=[2,1])
+np.set_printoptions(precision=2)
+
+
+# Plot non-normalized confusion matrix
+plt.figure()
+plot_confusion_matrix(cnf_matrix, classes=['severity=2','severity=1'],normalize= False,  title='Confusion matrix')
+----
+
+
++*Out[101]:*+
+----
+Confusion matrix, without normalization
+[[ 3029  5446]
+ [ 1416 17544]]
+
+![png](output_125_1.png)
+----
+
+
++*In[102]:*+
+[source, ipython3]
+----
+print (classification_report(y_test, yhat))
+----
+
+
++*Out[102]:*+
+----
+              precision    recall  f1-score   support
+
+           1       0.76      0.93      0.84     18960
+           2       0.68      0.36      0.47      8475
+
+   micro avg       0.75      0.75      0.75     27435
+   macro avg       0.72      0.64      0.65     27435
+weighted avg       0.74      0.75      0.72     27435
+
+----
